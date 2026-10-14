@@ -4,7 +4,7 @@ TradingView Pine Script v6용 기술적 패턴 및 목표 가격 영역 표시 �
 
 ## 최신 버전: v0.2
 
-파일: [universal_pattern_zones_v0_2.pine](../blob/main/universal_pattern_zones_v0_2.pine)
+파일: [universal_pattern_zones_v0_2.pine](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_2.pine)
 
 ### 탐지 패턴
 - 이중천장(Double Top)
@@ -22,7 +22,7 @@ TradingView Pine Script v6용 기술적 패턴 및 목표 가격 영역 표시 �
 
 ## 설치 방법
 1. TradingView에서 차트를 열고 하단의 Pine Editor를 엽니다.
-2. [v0.2 Pine Script 파일](../blob/main/universal_pattern_zones_v0_2.pine)의 코드를 복사해 붙여넣습니다.
+2. [v0.2 Pine Script 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_2.pine)의 코드를 복사해 붙여넣습니다.
 3. Save를 누른 뒤 Add to chart를 선택합니다.
 4. 오류가 표시되면 오류 전문과 줄 번호를 기록해 수정합니다.
 5. 차트 적용 후 Create Alert에서 필요한 알림 조건을 별도로 설정합니다.
@@ -42,8 +42,8 @@ TradingView Pine Script v6용 기술적 패턴 및 목표 가격 영역 표시 �
 - 기본 탐지 범위는 일부 대표 패턴에 한정됩니다. 모든 금융시장 패턴이 구현된 완성판은 아닙니다.
 
 ## 버전
-- [v0.1](../blob/main/universal_pattern_zones_v0_1.pine): 클래식 4개 패턴의 초기 코어
-- [v0.2](../blob/main/universal_pattern_zones_v0_2.pine): v0.1 기능 + FVG 구간 탐지/해소 상태
+- [v0.1](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_1.pine): 클래식 4개 패턴의 초기 코어
+- [v0.2](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_2.pine): v0.1 기능 + FVG 구간 탐지/해소 상태
 
 ## 로드맵
 다음 구현·검증 계획은 [패턴 모듈 확장 로드맵](docs/PATTERN_MODULE_ROADMAP.md)을 참조하세요.
