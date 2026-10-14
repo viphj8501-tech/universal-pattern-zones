@@ -117,6 +117,14 @@ var array<int> orderBlockDirections = array.new<int>()
 var array<int> orderBlockStates = array.new<int>()
 var array<int> orderBlockCreatedBars = array.new<int>()
 
+// Keep the SMC event drawings bounded; oldest event boxes are deleted first.
+f_keepSMCBox(array<box> _store, box _item, int _capacity) =>
+    array.push(_store, _item)
+    if array.size(_store) > _capacity
+        box _oldItem = array.shift(_store)
+        box.delete(_oldItem)
+    true
+
 // Add or update a pivot while maintaining an alternating swing sequence.
 f_addPivot(array<int> _types, array<int> _bars, array<float> _prices, int _type, int _bar, float _price, int _capacity) =>
     bool changed = false
@@ -200,14 +208,6 @@ if barstate.isconfirmed
     if not na(pivotLow)
         smcLastSwingLow := pivotLow
         smcLastSwingLowBar := bar_index - pivotRight
-
-// Keep the SMC event drawings bounded; oldest event boxes are deleted first.
-f_keepSMCBox(array<box> _store, box _item, int _capacity) =>
-    array.push(_store, _item)
-    if array.size(_store) > _capacity
-        box _oldItem = array.shift(_store)
-        box.delete(_oldItem)
-    true
 
 // Register confirmed pivots. Simultaneous high/low pivots are ignored because
 // their chronological order is ambiguous on a single candle.
