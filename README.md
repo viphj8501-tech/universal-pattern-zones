@@ -1,8 +1,9 @@
-# 통합 패턴 영역 — Universal Pattern Zones v0.6
+# 통합 패턴 영역 — Universal Pattern Zones v0.7
 
 TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술적 패턴 후보와 예상 가격 영역을 차트에 사각 박스로 표시합니다. 모든 영역과 신호는 분석 보조 수단이며, 가격 도달·매매 성공·수익을 보장하지 않습니다.
 
 ## 최신 버전
+- [v0.7 Pine Script — EQH/EQL 유동성 풀·오더 블록 영역 선택](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_7.pine)
 - [v0.6 Pine Script — ICT/SMC: BOS·CHOCH·유동성 스윕·오더 블록](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_6.pine)
 - [v0.5 Pine Script — 한글 패턴명·추세 지속 패턴·돌파선 재시험](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_5.pine)
 
@@ -36,6 +37,14 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - 오더 블록 상태: 활성 → 재방문 → 종가 기준 무효화
 - 각 모듈의 한글 박스 라벨 및 개별 알림 조건
 
+### v0.7 ICT/SMC 정교화
+- **EQH (Equal Highs)**: 허용 오차 내에 반복해서 형성된 확정 스윙 고점들을 상단 유동성 풀로 표시
+- **EQL (Equal Lows)**: 허용 오차 내에 반복해서 형성된 확정 스윙 저점들을 하단 유동성 풀로 표시
+- 비슷한 높이의 미체결 유동성 풀은 하나로 병합해 중복 표시를 줄임
+- 유동성 풀은 레벨을 꼬리로 넘은 뒤 다시 안쪽에서 종가가 형성되면 스윕 완료 상태로 바뀜
+- 오더 블록 영역을 **전체 캔들 고가~저가** 또는 **캔들 몸통(open~close)** 기준으로 선택
+- EQH/EQL 생성 및 각 방향의 스윕 알림 추가
+
 ## 표시 규칙
 - 형성 중 패턴: 주황색 계열 구조 박스
 - 목표 가격 영역: 패턴 높이 또는 ATR 기반의 반투명 사각 박스
@@ -55,13 +64,13 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - **패턴 설정**: 반전·FVG·캔들·기하학 패턴군의 탐지 켜기/끄기
 - **추세 지속 패턴**: 깃발·페넌트·박스권·채널 탐지 및 선행 추세 최소 폭
 - **돌파·재시험**: 재시험 허용 폭, 박스 최대 개수
-- **ICT/SMC 구조**: BOS·CHOCH·유동성 스윕 활성화, 오더 블록 활성화, 오더 블록 원천 캔들 탐색 범위, 각 모듈의 박스 수
+- **ICT/SMC 구조**: BOS·CHOCH·스윕 활성화, EQH/EQL 활성화와 허용 오차, 오더 블록 전체 캔들/몸통 선택, 원천 캔들 탐색 범위 및 박스 수
 - **FVG·캔들 설정**: 최소 FVG 크기, 캔들 몸통·핀바 꼬리 조건, ATR 목표 거리
 - **표시 설정**: 목표 영역 폭, 오른쪽 투영 길이, 목표 박스 최대 개수
 
 ## 중요한 한계 및 검증 상태
-- **v0.6은 TradingView Pine Editor에서 실제 컴파일 및 차트 실행을 확인해야 합니다.** 소스 정적 검사는 수행했지만 이 환경에서 TradingView의 실제 컴파일러를 실행할 수 없습니다.
-- v0.5의 박스 출력은 사용자 테스트에서 확인되었지만, 그 결과가 v0.6의 컴파일/동작 검증을 대신하지는 않습니다.
+- **v0.7은 TradingView Pine Editor에서 실제 컴파일 및 차트 실행을 확인해야 합니다.** 소스 정적 검사는 수행했지만 이 환경에서 TradingView의 실제 컴파일러를 실행할 수 없습니다.
+- 사용자는 v0.6의 정상 작동을 확인했지만, 그 결과가 v0.7의 컴파일/동작 검증을 대신하지는 않습니다.
 - BOS/CHOCH의 추세 방향은 스크립트 내부에서 추적하는 단순 편향 상태를 이용합니다. 다양한 ICT/SMC 정의를 완전히 대표하는 것은 아닙니다.
 - 오더 블록은 BOS/CHOCH 직전 탐색 범위 내 최근 반대 방향 캔들의 전체 고가~저가로 근사합니다. 바디만 쓰는 방식, 거래량·상위 시간대 필터, 다중 오더 블록 선택 등 고급 규칙은 아직 포함되지 않았습니다.
 - 피벗은 오른쪽 확인 봉이 지난 뒤 확정됩니다. 과거 피벗 위치에 표시돼도 당시 실시간으로 미리 알 수 있었던 신호는 아닙니다.
@@ -74,5 +83,6 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - [v0.4 — 삼각형·쐐기 모듈](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_4.pine)
 - [v0.5 — 한글화·추세 지속·돌파선 재시험](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_5.pine)
 - [v0.6 — ICT/SMC: BOS·CHOCH·유동성 스윕·오더 블록](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_6.pine)
+- [v0.7 — EQH/EQL 유동성 풀 및 오더 블록 영역 선택](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_7.pine)
 
 개발 계획은 [패턴 모듈 확장 로드맵](docs/PATTERN_MODULE_ROADMAP.md)을 참조하세요.
