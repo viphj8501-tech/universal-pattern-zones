@@ -247,13 +247,13 @@ if array.size(fvgBoxes) > 0 and not na(atr)
                 box.set_right(_fb, bar_index)
                 box.set_border_color(_fb, color.gray)
                 box.set_bgcolor(_fb, color.new(color.gray, 86))
-                box.set_text(_fb, _dir == 1 ? "Bullish FVG | 완전 해소" : "Bearish FVG | 완전 해소")
+                box.set_text(_fb, _dir == 1 ? "상승 불균형(FVG) | 완전 해소" : "하락 불균형(FVG) | 완전 해소")
                 fvgMitigatedNow := true
             else if barstate.isconfirmed and _touched and _state == 0
                 array.set(fvgStates, i, 1)
                 box.set_border_color(_fb, color.orange)
                 box.set_bgcolor(_fb, color.new(color.orange, 86))
-                box.set_text(_fb, _dir == 1 ? "Bullish FVG | 부분 해소" : "Bearish FVG | 부분 해소")
+                box.set_text(_fb, _dir == 1 ? "상승 불균형(FVG) | 부분 해소" : "하락 불균형(FVG) | 부분 해소")
                 box.set_right(_fb, bar_index + projectionBars)
             else
                 box.set_right(_fb, bar_index + projectionBars)
@@ -505,21 +505,21 @@ if newPivot and not na(atr) and atr > 0
                 float priorLegMove = g0 > 0 ? array.get(pivotPrices, g0) - array.get(pivotPrices, g0 - 1) : 0.0
                 bool topsAndBottomsFlat = highsFlat and lowsFlat and math.abs(h1 - l1) >= atr * minGeometryMoveAtr
                 bool parallelLines = math.abs(upperSlope - lowerSlope) <= atr * flatBoundaryAtr / math.max(bh3 - bl1, 1)
-                if topsAndBottomsFlat
+                if enableContinuation and topsAndBottomsFlat
                     shapeName := "직사각형 박스권"
                 else if highsFlat and lowMove >= atr * minGeometryMoveAtr
                     shapeName := "상승 삼각형"
                 else if lowsFlat and highMove <= -atr * minGeometryMoveAtr
                     shapeName := "하락 삼각형"
-                else if highMove <= -atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and priorLegMove >= atr * impulseThresholdAtr
+                else if enableContinuation and highMove <= -atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and priorLegMove >= atr * impulseThresholdAtr
                     shapeName := "상승 페넌트"
                 else if highMove <= -atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr
                     shapeName := "대칭 삼각형"
-                else if highMove <= -atr * minGeometryMoveAtr and lowMove <= -atr * minGeometryMoveAtr and parallelLines and priorLegMove >= atr * impulseThresholdAtr
+                else if enableContinuation and highMove <= -atr * minGeometryMoveAtr and lowMove <= -atr * minGeometryMoveAtr and parallelLines and priorLegMove >= atr * impulseThresholdAtr
                     shapeName := "상승 깃발"
-                else if highMove >= atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and parallelLines
+                else if enableContinuation and highMove >= atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and parallelLines
                     shapeName := "상승 채널"
-                else if highMove <= -atr * minGeometryMoveAtr and lowMove <= -atr * minGeometryMoveAtr and parallelLines
+                else if enableContinuation and highMove <= -atr * minGeometryMoveAtr and lowMove <= -atr * minGeometryMoveAtr and parallelLines
                     shapeName := "하락 채널"
                 else if highMove >= atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and lowerSlope > upperSlope
                     shapeName := "상승 쐐기형"
@@ -551,21 +551,21 @@ if newPivot and not na(atr) and atr > 0
                 float priorLegMove = g0 > 0 ? array.get(pivotPrices, g0) - array.get(pivotPrices, g0 - 1) : 0.0
                 bool topsAndBottomsFlat = highsFlat and lowsFlat and math.abs(h1 - l1) >= atr * minGeometryMoveAtr
                 bool parallelLines = math.abs(upperSlope - lowerSlope) <= atr * flatBoundaryAtr / math.max(bh2 - bl1, 1)
-                if topsAndBottomsFlat
+                if enableContinuation and topsAndBottomsFlat
                     shapeName := "직사각형 박스권"
                 else if highsFlat and lowMove >= atr * minGeometryMoveAtr
                     shapeName := "상승 삼각형"
                 else if lowsFlat and highMove <= -atr * minGeometryMoveAtr
                     shapeName := "하락 삼각형"
-                else if highMove <= -atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and priorLegMove <= -atr * impulseThresholdAtr
+                else if enableContinuation and highMove <= -atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and priorLegMove <= -atr * impulseThresholdAtr
                     shapeName := "하락 페넌트"
                 else if highMove <= -atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr
                     shapeName := "대칭 삼각형"
-                else if highMove >= atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and parallelLines and priorLegMove <= -atr * impulseThresholdAtr
+                else if enableContinuation and highMove >= atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and parallelLines and priorLegMove <= -atr * impulseThresholdAtr
                     shapeName := "하락 깃발"
-                else if highMove >= atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and parallelLines
+                else if enableContinuation and highMove >= atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and parallelLines
                     shapeName := "상승 채널"
-                else if highMove <= -atr * minGeometryMoveAtr and lowMove <= -atr * minGeometryMoveAtr and parallelLines
+                else if enableContinuation and highMove <= -atr * minGeometryMoveAtr and lowMove <= -atr * minGeometryMoveAtr and parallelLines
                     shapeName := "하락 채널"
                 else if highMove >= atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and upperSlope > lowerSlope
                     shapeName := "상승 쐐기형"
@@ -677,8 +677,8 @@ if enableCandles and barstate.isconfirmed and not na(atr) and atr > 0 and bar_in
 
 // Optional confirmed pivot markers. They are visually offset back to the pivot
 // candle, but the script only knows them after pivotRight bars have elapsed.
-plotshape(showPivots and not na(pivotHigh), title="Confirmed pivot high", style=shape.triangledown, location=location.abovebar, offset=-pivotRight, color=color.red, size=size.tiny)
-plotshape(showPivots and not na(pivotLow), title="Confirmed pivot low", style=shape.triangleup, location=location.belowbar, offset=-pivotRight, color=color.lime, size=size.tiny)
+plotshape(showPivots and not na(pivotHigh), title="확정 피벗 고점", style=shape.triangledown, location=location.abovebar, offset=-pivotRight, color=color.red, size=size.tiny)
+plotshape(showPivots and not na(pivotLow), title="확정 피벗 저점", style=shape.triangleup, location=location.belowbar, offset=-pivotRight, color=color.lime, size=size.tiny)
 
 alertcondition(patternCandidateNow, title="패턴 후보 감지", message="패턴 후보와 예상 목표 영역이 감지되었습니다. 매매 전 차트를 확인하세요.")
 alertcondition(confirmedPatternNow, title="패턴 완성 확인", message="넥라인 돌파·이탈이 종가로 확인되었습니다. 차트를 확인하세요.")
