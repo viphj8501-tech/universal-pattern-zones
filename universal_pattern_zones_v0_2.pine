@@ -1,0 +1,317 @@
+//@version=6
+indicator("Universal Pattern Zones — Core v0.2", shorttitle="UPZ v0.2", overlay=true, max_boxes_count=350, max_labels_count=100)
+
+// -----------------------------------------------------------------------------
+// Universal Pattern Zones — Core prototype
+// Scope in v0.1: Double Top, Double Bottom, Head & Shoulders, Inverse H&S.
+// Candidate zones are displayed before neckline confirmation. A pivot is only
+// registered after the configured right-side bars have closed.
+// This is a pattern-visualization tool, not a guarantee of future price movement.
+// -----------------------------------------------------------------------------
+
+// Inputs
+int pivotLeft         = input.int(5, "Pivot left bars", minval=2, maxval=30, group="Detection")
+int pivotRight        = input.int(5, "Pivot right bars", minval=2, maxval=30, group="Detection")
+float equalTolAtr     = input.float(0.75, "Shoulder/top-bottom tolerance (ATR)", minval=0.1, maxval=3.0, step=0.05, group="Detection")
+float minHeadAtr      = input.float(0.60, "Minimum head prominence (ATR)", minval=0.1, maxval=5.0, step=0.05, group="Detection")
+int atrLength         = input.int(14, "ATR length", minval=2, maxval=100, group="Detection")
+bool enableDouble     = input.bool(true, "Detect double top / bottom", group="Patterns")
+bool enableHeadShoulders = input.bool(true, "Detect head & shoulders", group="Patterns")
+bool enableFVG          = input.bool(true, "Detect Fair Value Gaps (FVG)", group="Patterns")
+float minFvgAtr         = input.float(0.15, "Minimum FVG size (ATR)", minval=0.0, maxval=3.0, step=0.05, group="FVG")
+int maxFvgBoxes         = input.int(75, "Maximum FVG zones", minval=5, maxval=150, group="FVG")
+int projectionBars    = input.int(40, "Target zone projection (bars)", minval=5, maxval=500, group="Display")
+float zoneHalfWidthAtr = input.float(0.25, "Target zone half-width (ATR)", minval=0.05, maxval=2.0, step=0.05, group="Display")
+int maxPatternBoxes   = input.int(35, "Maximum pattern zones", minval=5, maxval=150, group="Display")
+bool showPivots       = input.bool(false, "Show confirmed pivots", group="Display")
+
+float atr = ta.atr(atrLength)
+float pivotHigh = ta.pivothigh(high, pivotLeft, pivotRight)
+float pivotLow = ta.pivotlow(low, pivotLeft, pivotRight)
+
+// Pivot storage: type 1 = high, type -1 = low. Consecutive pivots of the same
+// type are compressed, retaining the more extreme price.
+var array<int> pivotTypes = array.new_int()
+var array<int> pivotBars = array.new_int()
+var array<float> pivotPrices = array.new_float()
+
+// Drawing/state storage for target zones.
+var array<box> patternBoxes = array.new<box>()
+var array<float> patternNecklines = array.new<float>()
+var array<float> patternTargets = array.new<float>()
+var array<float> patternInvalidations = array.new<float>()
+var array<int> patternDirections = array.new<int>()   // 1 = bullish, -1 = bearish
+var array<int> patternStates = array.new<int>()       // 0 = candidate, 1 = confirmed, 2 = target reached, -1 = invalidated
+var array<string> patternNames = array.new<string>()
+
+// Separate lifecycle storage for Fair Value Gap zones. FVG state: 0 = active,
+// 1 = partially mitigated, 2 = fully mitigated.
+var array<box> fvgBoxes = array.new<box>()
+var array<float> fvgTops = array.new<float>()
+var array<float> fvgBottoms = array.new<float>()
+var array<int> fvgDirections = array.new<int>()  // 1 = bullish, -1 = bearish
+var array<int> fvgStates = array.new<int>()
+
+// Add or update a pivot while maintaining an alternating swing sequence.
+f_addPivot(array<int> _types, array<int> _bars, array<float> _prices, int _type, int _bar, float _price, int _capacity) =>
+    bool changed = false
+    int _size = array.size(_types)
+    if _size == 0
+        array.push(_types, _type)
+        array.push(_bars, _bar)
+        array.push(_prices, _price)
+        changed := true
+    else
+        int _last = _size - 1
+        int _lastType = array.get(_types, _last)
+        float _lastPrice = array.get(_prices, _last)
+        if _lastType == _type
+            bool _moreExtreme = (_type == 1 and _price > _lastPrice) or (_type == -1 and _price < _lastPrice)
+            if _moreExtreme
+                array.set(_bars, _last, _bar)
+                array.set(_prices, _last, _price)
+                changed := true
+        else
+            array.push(_types, _type)
+            array.push(_bars, _bar)
+            array.push(_prices, _price)
+            changed := true
+            if array.size(_types) > _capacity
+                array.shift(_types)
+                array.shift(_bars)
+                array.shift(_prices)
+    changed
+
+// Create a target zone and keep drawing/state arrays aligned.
+f_storePattern(array<box> _boxes, array<float> _necks, array<float> _targets, array<float> _invalids, array<int> _dirs, array<int> _states, array<string> _names, int _leftBar, float _target, float _zoneWidth, float _neck, float _invalidation, int _direction, string _name, int _projection, int _maxCount) =>
+    color _border = _direction == 1 ? color.lime : color.red
+    color _fill = color.new(_border, 87)
+    box _b = box.new(left=_leftBar, top=_target + _zoneWidth, right=bar_index + _projection, bottom=math.max(syminfo.mintick, _target - _zoneWidth), border_color=_border, border_width=1, bgcolor=_fill, text=_name + " | 후보", text_color=color.white, text_size=size.small)
+    array.push(_boxes, _b)
+    array.push(_necks, _neck)
+    array.push(_targets, _target)
+    array.push(_invalids, _invalidation)
+    array.push(_dirs, _direction)
+    array.push(_states, 0)
+    array.push(_names, _name)
+    if array.size(_boxes) > _maxCount
+        box _old = array.shift(_boxes)
+        box.delete(_old)
+        array.shift(_necks)
+        array.shift(_targets)
+        array.shift(_invalids)
+        array.shift(_dirs)
+        array.shift(_states)
+        array.shift(_names)
+    true
+
+// Register confirmed pivots. Simultaneous high/low pivots are ignored because
+// their chronological order is ambiguous on a single candle.
+bool newPivot = false
+if barstate.isconfirmed
+    if not na(pivotHigh) and na(pivotLow)
+        newPivot := f_addPivot(pivotTypes, pivotBars, pivotPrices, 1, bar_index - pivotRight, pivotHigh, 20)
+    else if not na(pivotLow) and na(pivotHigh)
+        newPivot := f_addPivot(pivotTypes, pivotBars, pivotPrices, -1, bar_index - pivotRight, pivotLow, 20)
+
+// Update existing candidate zones before making new ones.
+bool confirmedPatternNow = false
+bool targetReachedNow = false
+bool invalidatedPatternNow = false
+bool fvgDetectedNow = false
+bool fvgMitigatedNow = false
+if array.size(patternBoxes) > 0 and not na(atr)
+    for i = 0 to array.size(patternBoxes) - 1
+        box _b = array.get(patternBoxes, i)
+        int _state = array.get(patternStates, i)
+        int _dir = array.get(patternDirections, i)
+        float _neck = array.get(patternNecklines, i)
+        float _invalid = array.get(patternInvalidations, i)
+        string _name = array.get(patternNames, i)
+        if _state == 0
+            bool _invalidated = (_dir == -1 and high > _invalid) or (_dir == 1 and low < _invalid)
+            bool _triggered = (_dir == -1 and close < _neck) or (_dir == 1 and close > _neck)
+            if barstate.isconfirmed and _invalidated
+                array.set(patternStates, i, -1)
+                box.set_right(_b, bar_index)
+                box.set_border_color(_b, color.gray)
+                box.set_bgcolor(_b, color.new(color.gray, 88))
+                box.set_text(_b, _name + " | 무효화")
+                invalidatedPatternNow := true
+            else if barstate.isconfirmed and _triggered
+                array.set(patternStates, i, 1)
+                box.set_border_color(_b, _dir == 1 ? color.lime : color.red)
+                box.set_bgcolor(_b, color.new(_dir == 1 ? color.lime : color.red, 78))
+                box.set_text(_b, _name + " | 완성 확인")
+                confirmedPatternNow := true
+            else
+                box.set_right(_b, bar_index + projectionBars)
+        else if _state == 1
+            bool _hitTarget = high >= box.get_bottom(_b) and low <= box.get_top(_b)
+            if barstate.isconfirmed and _hitTarget
+                array.set(patternStates, i, 2)
+                box.set_right(_b, bar_index)
+                box.set_border_color(_b, color.aqua)
+                box.set_bgcolor(_b, color.new(color.aqua, 80))
+                box.set_text(_b, _name + " | 목표 영역 도달")
+                targetReachedNow := true
+            else
+                box.set_right(_b, bar_index + projectionBars)
+
+
+// Update existing FVG zones. Bullish gaps are filled top-down; bearish gaps
+// are filled bottom-up. Partial and full mitigation are distinguished.
+if array.size(fvgBoxes) > 0 and not na(atr)
+    for i = 0 to array.size(fvgBoxes) - 1
+        box _fb = array.get(fvgBoxes, i)
+        float _top = array.get(fvgTops, i)
+        float _bottom = array.get(fvgBottoms, i)
+        int _dir = array.get(fvgDirections, i)
+        int _state = array.get(fvgStates, i)
+        if _state < 2
+            bool _touched = _dir == 1 ? low <= _top : high >= _bottom
+            bool _filled = _dir == 1 ? low <= _bottom : high >= _top
+            if barstate.isconfirmed and _filled
+                array.set(fvgStates, i, 2)
+                box.set_right(_fb, bar_index)
+                box.set_border_color(_fb, color.gray)
+                box.set_bgcolor(_fb, color.new(color.gray, 86))
+                box.set_text(_fb, _dir == 1 ? "Bullish FVG | 완전 해소" : "Bearish FVG | 완전 해소")
+                fvgMitigatedNow := true
+            else if barstate.isconfirmed and _touched and _state == 0
+                array.set(fvgStates, i, 1)
+                box.set_border_color(_fb, color.orange)
+                box.set_bgcolor(_fb, color.new(color.orange, 86))
+                box.set_text(_fb, _dir == 1 ? "Bullish FVG | 부분 해소" : "Bearish FVG | 부분 해소")
+                box.set_right(_fb, bar_index + projectionBars)
+            else
+                box.set_right(_fb, bar_index + projectionBars)
+
+// Detect patterns when a newly confirmed pivot is added.
+bool patternCandidateNow = false
+if newPivot and not na(atr) and atr > 0
+    int n = array.size(pivotTypes)
+    bool madePattern = false
+    float zoneWidth = math.max(atr * zoneHalfWidthAtr, syminfo.mintick * 2.0)
+    float tolerance = atr * equalTolAtr
+
+    // Head & shoulders: High, Low, Higher High (head), Low, High.
+    if enableHeadShoulders and n >= 5 and not madePattern
+        int a0 = n - 5
+        bool hsSequence = array.get(pivotTypes, a0) == 1 and array.get(pivotTypes, a0 + 1) == -1 and array.get(pivotTypes, a0 + 2) == 1 and array.get(pivotTypes, a0 + 3) == -1 and array.get(pivotTypes, a0 + 4) == 1
+        if hsSequence
+            float leftShoulder = array.get(pivotPrices, a0)
+            float neckLeft = array.get(pivotPrices, a0 + 1)
+            float head = array.get(pivotPrices, a0 + 2)
+            float neckRight = array.get(pivotPrices, a0 + 3)
+            float rightShoulder = array.get(pivotPrices, a0 + 4)
+            float neck = (neckLeft + neckRight) / 2.0
+            bool shouldersMatch = math.abs(leftShoulder - rightShoulder) <= tolerance
+            bool headIsHigher = head > math.max(leftShoulder, rightShoulder) + atr * minHeadAtr
+            bool neckValid = neck < math.min(leftShoulder, rightShoulder)
+            float target = neck - (head - neck)
+            float invalidation = math.max(head, math.max(leftShoulder, rightShoulder)) + tolerance
+            if shouldersMatch and headIsHigher and neckValid and target > syminfo.mintick
+                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, array.get(pivotBars, a0 + 4), target, zoneWidth, neck, invalidation, -1, "Head & Shoulders", projectionBars, maxPatternBoxes)
+                madePattern := true
+                patternCandidateNow := true
+
+    // Inverse head & shoulders: Low, High, Lower Low (head), High, Low.
+    if enableHeadShoulders and n >= 5 and not madePattern
+        int a0 = n - 5
+        bool ihsSequence = array.get(pivotTypes, a0) == -1 and array.get(pivotTypes, a0 + 1) == 1 and array.get(pivotTypes, a0 + 2) == -1 and array.get(pivotTypes, a0 + 3) == 1 and array.get(pivotTypes, a0 + 4) == -1
+        if ihsSequence
+            float leftShoulder = array.get(pivotPrices, a0)
+            float neckLeft = array.get(pivotPrices, a0 + 1)
+            float head = array.get(pivotPrices, a0 + 2)
+            float neckRight = array.get(pivotPrices, a0 + 3)
+            float rightShoulder = array.get(pivotPrices, a0 + 4)
+            float neck = (neckLeft + neckRight) / 2.0
+            bool shouldersMatch = math.abs(leftShoulder - rightShoulder) <= tolerance
+            bool headIsLower = head < math.min(leftShoulder, rightShoulder) - atr * minHeadAtr
+            bool neckValid = neck > math.max(leftShoulder, rightShoulder)
+            float target = neck + (neck - head)
+            float invalidation = math.min(head, math.min(leftShoulder, rightShoulder)) - tolerance
+            if shouldersMatch and headIsLower and neckValid and target > syminfo.mintick and invalidation > syminfo.mintick
+                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, array.get(pivotBars, a0 + 4), target, zoneWidth, neck, invalidation, 1, "Inverse H&S", projectionBars, maxPatternBoxes)
+                madePattern := true
+                patternCandidateNow := true
+
+    // Double top: High, Low, High, with similar highs.
+    if enableDouble and n >= 3 and not madePattern
+        int a0 = n - 3
+        bool dtSequence = array.get(pivotTypes, a0) == 1 and array.get(pivotTypes, a0 + 1) == -1 and array.get(pivotTypes, a0 + 2) == 1
+        if dtSequence
+            float top1 = array.get(pivotPrices, a0)
+            float neck = array.get(pivotPrices, a0 + 1)
+            float top2 = array.get(pivotPrices, a0 + 2)
+            bool similarTops = math.abs(top1 - top2) <= tolerance
+            float target = neck - (math.max(top1, top2) - neck)
+            float invalidation = math.max(top1, top2) + tolerance
+            if similarTops and neck < math.min(top1, top2) and target > syminfo.mintick
+                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, array.get(pivotBars, a0 + 2), target, zoneWidth, neck, invalidation, -1, "Double Top", projectionBars, maxPatternBoxes)
+                madePattern := true
+                patternCandidateNow := true
+
+    // Double bottom: Low, High, Low, with similar lows.
+    if enableDouble and n >= 3 and not madePattern
+        int a0 = n - 3
+        bool dbSequence = array.get(pivotTypes, a0) == -1 and array.get(pivotTypes, a0 + 1) == 1 and array.get(pivotTypes, a0 + 2) == -1
+        if dbSequence
+            float bottom1 = array.get(pivotPrices, a0)
+            float neck = array.get(pivotPrices, a0 + 1)
+            float bottom2 = array.get(pivotPrices, a0 + 2)
+            bool similarBottoms = math.abs(bottom1 - bottom2) <= tolerance
+            float target = neck + (neck - math.min(bottom1, bottom2))
+            float invalidation = math.min(bottom1, bottom2) - tolerance
+            if similarBottoms and neck > math.max(bottom1, bottom2) and target > syminfo.mintick and invalidation > syminfo.mintick
+                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, array.get(pivotBars, a0 + 2), target, zoneWidth, neck, invalidation, 1, "Double Bottom", projectionBars, maxPatternBoxes)
+                madePattern := true
+                patternCandidateNow := true
+
+
+// Detect three-candle Fair Value Gaps on confirmed bars.
+// Bullish: current low is above high[2]. Bearish: current high is below low[2].
+// These are imbalance zones, not automatic buy/sell signals.
+if enableFVG and barstate.isconfirmed and not na(atr) and atr > 0 and bar_index >= 2
+    bool _bullFvg = low > high[2] and (low - high[2]) >= atr * minFvgAtr
+    bool _bearFvg = high < low[2] and (low[2] - high) >= atr * minFvgAtr
+    if _bullFvg
+        float _top = low
+        float _bottom = high[2]
+        box _newFvg = box.new(left=bar_index - 2, top=_top, right=bar_index + projectionBars, bottom=_bottom, border_color=color.teal, border_width=1, bgcolor=color.new(color.teal, 87), text="Bullish FVG", text_color=color.white, text_size=size.small)
+        array.push(fvgBoxes, _newFvg)
+        array.push(fvgTops, _top)
+        array.push(fvgBottoms, _bottom)
+        array.push(fvgDirections, 1)
+        array.push(fvgStates, 0)
+        fvgDetectedNow := true
+    else if _bearFvg
+        float _top = low[2]
+        float _bottom = high
+        box _newFvg = box.new(left=bar_index - 2, top=_top, right=bar_index + projectionBars, bottom=_bottom, border_color=color.purple, border_width=1, bgcolor=color.new(color.purple, 87), text="Bearish FVG", text_color=color.white, text_size=size.small)
+        array.push(fvgBoxes, _newFvg)
+        array.push(fvgTops, _top)
+        array.push(fvgBottoms, _bottom)
+        array.push(fvgDirections, -1)
+        array.push(fvgStates, 0)
+        fvgDetectedNow := true
+    if array.size(fvgBoxes) > maxFvgBoxes
+        box _oldFvg = array.shift(fvgBoxes)
+        box.delete(_oldFvg)
+        array.shift(fvgTops)
+        array.shift(fvgBottoms)
+        array.shift(fvgDirections)
+        array.shift(fvgStates)
+
+// Optional confirmed pivot markers. They are visually offset back to the pivot
+// candle, but the script only knows them after pivotRight bars have elapsed.
+plotshape(showPivots and not na(pivotHigh), title="Confirmed pivot high", style=shape.triangledown, location=location.abovebar, offset=-pivotRight, color=color.red, size=size.tiny)
+plotshape(showPivots and not na(pivotLow), title="Confirmed pivot low", style=shape.triangleup, location=location.belowbar, offset=-pivotRight, color=color.lime, size=size.tiny)
+
+alertcondition(patternCandidateNow, title="Pattern candidate detected", message="Universal Pattern Zones: a pattern candidate and target zone were detected. Review the chart before trading.")
+alertcondition(confirmedPatternNow, title="Pattern confirmed", message="Universal Pattern Zones: neckline confirmation occurred. Review the chart before trading.")
+alertcondition(targetReachedNow, title="Target zone reached", message="Universal Pattern Zones: price entered a projected target zone.")
+alertcondition(invalidatedPatternNow, title="Pattern invalidated", message="Universal Pattern Zones: a candidate pattern was invalidated.")
+alertcondition(fvgDetectedNow, title="FVG detected", message="Universal Pattern Zones: a new Fair Value Gap was detected. This is an imbalance zone, not an automatic trade signal.")
+alertcondition(fvgMitigatedNow, title="FVG fully mitigated", message="Universal Pattern Zones: price fully mitigated a Fair Value Gap zone.")
