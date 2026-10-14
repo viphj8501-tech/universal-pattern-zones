@@ -1,2 +1,40 @@
-# universal-pattern-zones
-universal-pattern-zones
+# Universal Pattern Zones — Core v0.1
+
+TradingView Pine Script v6용 패턴 목표 영역 표시 프로토타입입니다.
+
+## 이번 버전의 탐지 범위
+- 이중천장(Double Top)
+- 이중바닥(Double Bottom)
+- 헤드앤숄더(Head & Shoulders)
+- 역헤드앤숄더(Inverse Head & Shoulders)
+
+## 표시 로직
+- 오른쪽 확인 봉이 지난 피벗 고점/저점을 사용해 패턴 후보를 탐지합니다.
+- 패턴 후보가 만들어지면 측정 목표가 주변에 반투명 사각형을 표시합니다.
+- 넥라인 돌파/이탈이 종가 기준으로 확인되면 `완성 확인`으로 변경합니다.
+- 목표 영역 도달 시 `목표 영역 도달`, 구조가 무효화되면 `무효화`로 표시합니다.
+- 오래된 박스는 설정된 최대 개수를 넘을 때 삭제합니다.
+- 후보 감지, 완성 확인, 목표 영역 도달, 무효화에 대해 TradingView 알림 조건을 제공합니다.
+
+## 설치 방법
+1. TradingView에서 차트를 엽니다.
+2. 하단의 Pine Editor를 엽니다.
+3. `universal_pattern_zones_v0_1.pine` 파일의 코드를 복사해 Pine Editor에 붙여넣습니다.
+4. `Save`를 누른 뒤 `Add to chart`를 선택합니다.
+5. 오류가 나오면 오류 전문과 해당 줄 번호를 보관해 수정합니다.
+6. 알림은 차트 적용 후 `Create Alert`에서 지표와 필요한 조건을 선택해 별도로 설정합니다.
+
+## 튜닝 시작점
+- 변동성이 큰 상품이나 짧은 타임프레임: 피벗 길이를 줄이면 후보가 더 자주 나타날 수 있지만 잡음도 늘 수 있습니다.
+- 신호가 너무 많은 경우: 피벗 길이와 `Shoulder/top-bottom tolerance (ATR)`를 조정합니다.
+- 목표 박스가 너무 넓거나 좁은 경우: `Target zone half-width (ATR)`를 조정합니다.
+
+## 중요 한계
+- 이 버전은 전체 패턴을 구현한 완성판이 아닙니다. 우선 네 가지 가격 구조 패턴을 위한 공통 탐지·박스·상태 엔진을 제공합니다.
+- 피벗 기반 탐지는 `Pivot right bars`만큼 확인 지연이 발생합니다. 차트에 피벗이 과거 봉 위치에 표시돼도 미래 정보를 사전에 알고 있었다는 뜻은 아닙니다.
+- 스크립트는 TradingView Pine Editor에서 실제 컴파일/차트 검증을 아직 거치지 않았습니다. 정적 검토만 수행했으므로 첫 적용 시 컴파일 결과를 확인해야 합니다.
+- 측정 목표가는 기술적 패턴의 규칙에 따른 추정치일 뿐, 가격 도달이나 수익을 보장하지 않습니다.
+- 다음 확장 후보: FVG/불균형, 삼각형·쐐기·깃발·채널, 캔들 패턴, ICT/SMC 구조, 하모닉 패턴, 엘리엇 파동 후보.
+
+## 개발 로드맵
+See [docs/PATTERN_MODULE_ROADMAP.md](docs/PATTERN_MODULE_ROADMAP.md).
