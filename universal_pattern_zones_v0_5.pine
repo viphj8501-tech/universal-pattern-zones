@@ -531,6 +531,13 @@ if newPivot and not na(atr) and atr > 0
                 upperAnchorBar := bh3
                 lowerAnchor := l2
                 lowerAnchorBar := bl2
+                if shapeName == "직사각형 박스권"
+                    upperSlope := 0.0
+                    lowerSlope := 0.0
+                    upperAnchor := shapeUpper
+                    upperAnchorBar := endPivotBar
+                    lowerAnchor := shapeLower
+                    lowerAnchorBar := endPivotBar
             else if lowStart
                 float l1 = array.get(pivotPrices, g0)
                 float h1 = array.get(pivotPrices, g0 + 1)
@@ -577,6 +584,13 @@ if newPivot and not na(atr) and atr > 0
                 upperAnchorBar := bh2
                 lowerAnchor := l3
                 lowerAnchorBar := bl3
+                if shapeName == "직사각형 박스권"
+                    upperSlope := 0.0
+                    lowerSlope := 0.0
+                    upperAnchor := shapeUpper
+                    upperAnchorBar := endPivotBar
+                    lowerAnchor := shapeLower
+                    lowerAnchorBar := endPivotBar
             bool validShape = shapeName != "" and not na(shapeUpper) and not na(shapeLower) and shapeUpper > shapeLower and not na(upperSlope) and not na(lowerSlope)
             if validShape
                 box geomBox = box.new(left=array.get(pivotBars, g0), top=shapeUpper, right=bar_index + projectionBars, bottom=shapeLower, border_color=color.orange, border_width=1, bgcolor=color.new(color.orange, 90), text=shapeName + " | 형성 중", text_color=color.white, text_size=size.small)
