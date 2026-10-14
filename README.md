@@ -1,40 +1,49 @@
-# Universal Pattern Zones — Core v0.1
+# Universal Pattern Zones — Pine Script v0.2
 
-TradingView Pine Script v6용 패턴 목표 영역 표시 프로토타입입니다.
+TradingView Pine Script v6용 기술적 패턴 및 목표 가격 영역 표시 지표의 개발 저장소입니다. 현재 구현은 초기 프로토타입이며, 투자 결과를 보장하지 않습니다.
 
-## 이번 버전의 탐지 범위
+## 최신 버전: v0.2
+
+파일: [universal_pattern_zones_v0_2.pine](../blob/main/universal_pattern_zones_v0_2.pine)
+
+### 탐지 패턴
 - 이중천장(Double Top)
 - 이중바닥(Double Bottom)
 - 헤드앤숄더(Head & Shoulders)
 - 역헤드앤숄더(Inverse Head & Shoulders)
+- FVG(Fair Value Gap): 3개 캔들 구조의 상승·하락 불균형 구간
 
-## 표시 로직
-- 오른쪽 확인 봉이 지난 피벗 고점/저점을 사용해 패턴 후보를 탐지합니다.
-- 패턴 후보가 만들어지면 측정 목표가 주변에 반투명 사각형을 표시합니다.
-- 넥라인 돌파/이탈이 종가 기준으로 확인되면 `완성 확인`으로 변경합니다.
-- 목표 영역 도달 시 `목표 영역 도달`, 구조가 무효화되면 `무효화`로 표시합니다.
-- 오래된 박스는 설정된 최대 개수를 넘을 때 삭제합니다.
-- 후보 감지, 완성 확인, 목표 영역 도달, 무효화에 대해 TradingView 알림 조건을 제공합니다.
+### 표시 및 상태
+- 피벗 기반 패턴 후보와 측정 목표가 영역을 반투명 사각형으로 표시
+- 종가 기준 넥라인 돌파/이탈 확인 시 클래식 패턴 상태 변경
+- FVG의 활성·부분 해소·완전 해소 상태 구분
+- 오래된 영역 삭제를 통해 박스 수 제한
+- 후보 감지, 완성 확인, 목표 영역 도달, 패턴 무효화, FVG 감지 및 완전 해소 알림 조건 제공
 
 ## 설치 방법
-1. TradingView에서 차트를 엽니다.
-2. 하단의 Pine Editor를 엽니다.
-3. `universal_pattern_zones_v0_1.pine` 파일의 코드를 복사해 Pine Editor에 붙여넣습니다.
-4. `Save`를 누른 뒤 `Add to chart`를 선택합니다.
-5. 오류가 나오면 오류 전문과 해당 줄 번호를 보관해 수정합니다.
-6. 알림은 차트 적용 후 `Create Alert`에서 지표와 필요한 조건을 선택해 별도로 설정합니다.
+1. TradingView에서 차트를 열고 하단의 Pine Editor를 엽니다.
+2. [v0.2 Pine Script 파일](../blob/main/universal_pattern_zones_v0_2.pine)의 코드를 복사해 붙여넣습니다.
+3. Save를 누른 뒤 Add to chart를 선택합니다.
+4. 오류가 표시되면 오류 전문과 줄 번호를 기록해 수정합니다.
+5. 차트 적용 후 Create Alert에서 필요한 알림 조건을 별도로 설정합니다.
 
-## 튜닝 시작점
-- 변동성이 큰 상품이나 짧은 타임프레임: 피벗 길이를 줄이면 후보가 더 자주 나타날 수 있지만 잡음도 늘 수 있습니다.
-- 신호가 너무 많은 경우: 피벗 길이와 `Shoulder/top-bottom tolerance (ATR)`를 조정합니다.
-- 목표 박스가 너무 넓거나 좁은 경우: `Target zone half-width (ATR)`를 조정합니다.
+## 설정 튜닝
+- `Pivot left bars`, `Pivot right bars`: 패턴에 필요한 스윙 민감도와 확인 지연을 조절합니다.
+- `Shoulder/top-bottom tolerance (ATR)`: 어깨 또는 고점·저점 유사성 허용 오차를 조절합니다.
+- `Minimum FVG size (ATR)`: 작은 불균형 구간을 필터링합니다.
+- `Target zone half-width (ATR)`: 목표 영역의 세로 폭을 조절합니다.
+- `Maximum pattern zones`, `Maximum FVG zones`: 각각 표시할 영역의 개수를 제한합니다.
 
 ## 중요 한계
-- 이 버전은 전체 패턴을 구현한 완성판이 아닙니다. 우선 네 가지 가격 구조 패턴을 위한 공통 탐지·박스·상태 엔진을 제공합니다.
-- 피벗 기반 탐지는 `Pivot right bars`만큼 확인 지연이 발생합니다. 차트에 피벗이 과거 봉 위치에 표시돼도 미래 정보를 사전에 알고 있었다는 뜻은 아닙니다.
-- 스크립트는 TradingView Pine Editor에서 실제 컴파일/차트 검증을 아직 거치지 않았습니다. 정적 검토만 수행했으므로 첫 적용 시 컴파일 결과를 확인해야 합니다.
-- 측정 목표가는 기술적 패턴의 규칙에 따른 추정치일 뿐, 가격 도달이나 수익을 보장하지 않습니다.
-- 다음 확장 후보: FVG/불균형, 삼각형·쐐기·깃발·채널, 캔들 패턴, ICT/SMC 구조, 하모닉 패턴, 엘리엇 파동 후보.
+- Pine Editor에서 실제 컴파일 또는 실시간 차트 검증은 아직 수행하지 않았습니다. GitHub 등록만으로 컴파일 성공을 의미하지 않습니다.
+- 피벗은 오른쪽 확인 봉이 지난 뒤 확정됩니다. 표시 위치가 과거 봉으로 되돌아가 보이더라도, 해당 지점에서 실시간으로 미리 알 수 있었던 신호는 아닙니다.
+- 패턴 목표가는 구조에 기반한 추정치입니다. 도달 또는 수익을 보장하지 않습니다.
+- FVG는 가격 불균형 구간이며 자동 매수·매도 신호로 해석해서는 안 됩니다.
+- 기본 탐지 범위는 일부 대표 패턴에 한정됩니다. 모든 금융시장 패턴이 구현된 완성판은 아닙니다.
 
-## 개발 로드맵
-See [docs/PATTERN_MODULE_ROADMAP.md](docs/PATTERN_MODULE_ROADMAP.md).
+## 버전
+- [v0.1](../blob/main/universal_pattern_zones_v0_1.pine): 클래식 4개 패턴의 초기 코어
+- [v0.2](../blob/main/universal_pattern_zones_v0_2.pine): v0.1 기능 + FVG 구간 탐지/해소 상태
+
+## 로드맵
+다음 구현·검증 계획은 [패턴 모듈 확장 로드맵](docs/PATTERN_MODULE_ROADMAP.md)을 참조하세요.
