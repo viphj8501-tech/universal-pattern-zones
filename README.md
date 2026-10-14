@@ -1,55 +1,75 @@
-# Universal Pattern Zones — Pine Script v0.4
+# 통합 패턴 영역 — Universal Pattern Zones v0.5
 
-TradingView Pine Script v6용 기술적 패턴 및 예상 가격 영역 표시 지표의 개발 저장소입니다. 현재 구현은 사용자가 차트에서 확인하며 테스트하는 프로토타입이며, 투자 결과를 보장하지 않습니다.
+TradingView Pine Script v6 지표입니다. 여러 기술적 패턴 후보와 예상 가격 영역을 차트에 사각 박스로 표시합니다. 모든 영역은 분석 보조 수단이며 가격 도달 또는 수익을 보장하지 않습니다.
 
-## 최신 버전: v0.4
+## 최신 버전
+- [v0.5 Pine Script — 한글 패턴명 + 추세 지속 패턴 + 돌파선 재시험](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_5.pine)
 
-- [v0.4 Pine Script — Triangle & Wedge 모듈](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_4.pine)
+## 구현 패턴
 
-### 구현 패턴
-- 클래식 구조: Double Top, Double Bottom, Head & Shoulders, Inverse Head & Shoulders
-- FVG: Bullish/Bearish Fair Value Gap, 부분·완전 해소
-- 캔들: Bullish/Bearish Engulfing, Bullish/Bearish Pin Bar
-- 가격 구조 v0.4: Ascending Triangle, Descending Triangle, Symmetrical Triangle, Rising Wedge, Falling Wedge
+### 반전 구조
+- 이중천장
+- 이중바닥
+- 헤드앤숄더
+- 역헤드앤숄더
 
-### v0.4 가격 구조 모듈
-- 5개의 교대 확정 피벗을 사용해 스윙 구조 후보를 판별합니다.
-- 형성 중 패턴은 오렌지색 사각형으로 표시합니다.
-- 상단·하단 경계선을 피벗 간 기울기로 연장해 종가 기준 돌파를 확인합니다.
-- 돌파 방향은 실제 종가가 상단 경계 위인지 하단 경계 아래인지로 결정합니다. 패턴 이름만으로 매수·매도 방향을 확정하지 않습니다.
-- 목표 영역은 돌파 경계에서 패턴의 초기 높이만큼 투영한 측정 이동 영역입니다.
-- 삼각형/쐐기 형성, 돌파, 수렴 종료에 알림 조건을 제공합니다.
+### 가격 불균형
+- 상승 불균형(FVG)
+- 하락 불균형(FVG)
+- 부분 해소 / 완전 해소
 
-### 기존 모듈
-- 이중천장·이중바닥, 헤드앤숄더·역헤드앤숄더: 측정 목표 영역 및 넥라인 확인
-- FVG: 활성·부분 해소·완전 해소 상태
-- 캔들: ATR 배수 기반 목표 영역, 신호 캔들 고가/저가 무효화
+### 캔들 패턴
+- 상승 장악형 / 하락 장악형
+- 상승 핀바 / 하락 핀바
 
-## 설치 방법
-1. TradingView에서 차트를 열고 하단의 Pine Editor를 엽니다.
-2. [v0.4 Pine Script](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_4.pine)의 코드를 복사해 붙여넣습니다.
-3. Save 후 Add to chart를 선택합니다.
-4. 컴파일 오류가 나면 메시지 전체와 줄 번호를 기록해 수정합니다.
-5. 차트 적용 후 Create Alert에서 원하는 알림 조건을 별도로 설정합니다.
+### 삼각형 및 쐐기
+- 상승 삼각형
+- 하락 삼각형
+- 대칭 삼각형
+- 상승 쐐기형
+- 하락 쐐기형
 
-## 삼각형·쐐기 설정
-- `Minimum swing move for shape (ATR)`: 경계가 충분히 움직여야 패턴 후보로 분류하도록 합니다.
-- `Horizontal boundary tolerance (ATR)`: 삼각형의 수평 경계 판단 허용 오차입니다.
-- `Maximum formation boxes`: 표시할 형성 중 구조 박스 개수입니다.
-- `Target zone projection (bars)`: 목표 박스의 미래 표시 길이입니다.
-- `Target zone half-width (ATR)`: 목표 가격대 박스의 세로 폭입니다.
+### v0.5 추세 지속·가격 구조
+- 상승 깃발 / 하락 깃발
+- 상승 페넌트 / 하락 페넌트
+- 직사각형 박스권
+- 상승 채널 / 하락 채널
+- 삼각형·쐐기·깃발·페넌트·채널 등 감지 구조의 종가 기준 돌파
+- 돌파 경계 주변의 재시험 대기 박스, 재시험 성공·실패·대기 만료 표시
 
-## 중요 한계
-- 실제 TradingView Pine Editor에서 v0.4의 컴파일 성공 및 차트별 탐지 정밀도는 아직 별도로 확인해야 합니다. 코드 등록과 정적 검토가 실행 검증을 의미하지는 않습니다.
-- 피벗 기반 탐지는 오른쪽 확인 봉이 지난 후 확정됩니다. 차트에서 피벗이 과거 위치에 보이는 것은 그 시점에 알 수 있었던 실시간 신호라는 뜻이 아닙니다.
-- 추세선 경계는 최근 확정 피벗에서 직선으로 외삽하는 단순 모델입니다. 장기간 외삽하면 경계가 부정확해질 수 있습니다.
-- 측정 이동 목표가는 패턴 높이에 기반한 기술적 추정치이며 실제 목표 도달이나 수익을 보장하지 않습니다.
-- FVG는 가격 불균형, 캔들 패턴은 시각적 구조로 표시되며 자동 매수·매도 지시가 아닙니다.
-- 모든 금융시장 패턴을 구현한 것은 아닙니다.
+## 표시 규칙
+- 형성 중 패턴: 주황색 계열 구조 박스
+- 목표 가격 영역: 패턴 높이 또는 ATR 기반으로 산출한 반투명 사각 박스
+- 돌파선 재시험 대기: 노란색 박스
+- 재시험 성공: 청록색 계열
+- 무효화·만료: 회색 계열
 
-## 버전
+## 설치
+1. TradingView 차트를 열고 하단의 Pine Editor를 엽니다.
+2. [v0.5 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_5.pine)을 열어 코드를 복사합니다.
+3. Pine Editor에 붙여넣고 Save를 누른 뒤 Add to chart를 선택합니다.
+4. 알림을 쓰려면 Create Alert에서 원하는 한글 알림 조건을 선택합니다.
+
+## 주요 설정
+- **패턴 설정**: 각 패턴군 탐지 켜기/끄기
+- **탐지 설정**: 피벗 왼쪽·오른쪽 확인 봉 수, ATR 기간, 고점·저점 허용 오차
+- **삼각형·쐐기**: 최소 스윙 폭, 수평 경계 허용 오차, 형성 박스 최대 개수
+- **추세 지속 패턴**: 깃발·페넌트·박스권·채널 탐지, 선행 추세 최소 폭
+- **돌파·재시험**: 재시험 박스 최대 개수, 돌파선 재시험 허용 폭
+- **FVG·캔들 설정**: 최소 FVG 크기, 캔들 몸통 및 핀바 꼬리 조건, ATR 목표 거리
+- **표시 설정**: 목표 영역 폭, 박스 오른쪽 투영 길이, 각 박스 최대 개수
+
+## 중요한 한계
+- v0.5는 TradingView Pine Editor에서 실제 컴파일을 자동으로 검증한 상태가 아닙니다. 사용자가 Pine Editor에서 컴파일과 차트 동작을 확인해야 합니다.
+- 피벗 기반 패턴은 오른쪽 확인 봉이 지난 뒤 확정됩니다. 과거 봉 위치에 표시되어도 해당 시점에 실시간으로 미리 알 수 있었던 신호가 아닙니다.
+- 가격 구조는 5개의 교대 피벗과 단순 기울기 외삽을 이용합니다. 깃발·페넌트·채널의 판별은 근사 규칙이며, 모든 시장 상황을 완벽하게 분류하지는 않습니다.
+- 목표 가격은 패턴 높이 또는 ATR 배수를 이용한 기술적 추정치입니다. 목표 도달, 매매 성공 또는 수익을 보장하지 않습니다.
+- 돌파선 재시험은 돌파 이후 정해진 대기 기간 안에 가격이 구간을 다시 터치하고 돌파 방향으로 종가가 회복되는 경우 성공으로 표시합니다. 이는 자동 매매 지시가 아닙니다.
+
+## 버전 이력
 - [v0.1 — 클래식 패턴 코어](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_1.pine)
 - [v0.2 — FVG 모듈](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_2.pine)
 - [v0.3 — 캔들 패턴 모듈](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_3.pine)
+- [v0.4 — 삼각형·쐐기 모듈](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_4.pine)
 
 개발 계획은 [패턴 모듈 확장 로드맵](docs/PATTERN_MODULE_ROADMAP.md)을 참조하세요.
