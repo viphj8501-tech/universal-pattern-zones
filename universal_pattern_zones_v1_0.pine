@@ -1010,7 +1010,7 @@ if enableFVG and barstate.isconfirmed and not na(atr) and atr > 0 and bar_index 
 // Detect overlapping same-direction order blocks and FVGs.
 // A confluence is only created after both source zones exist; EQH/EQL proximity
 // is a contextual tag, not a separate buy/sell instruction.
-if enableObFvgConfluence and barstate.isconfirmed and not na(atr) and atr > 0
+if enableObFvgConfluence and barstate.isconfirmed and not na(atr) and atr > 0 and (orderBlockDetectedNow or fvgDetectedNow)
     int _obCountForConfluence = array.size(orderBlockBoxes)
     int _fvgCountForConfluence = array.size(fvgBoxes)
     if _obCountForConfluence > 0 and _fvgCountForConfluence > 0
@@ -1021,7 +1021,7 @@ if enableObFvgConfluence and barstate.isconfirmed and not na(atr) and atr > 0
                 for fi = 0 to _fvgCountForConfluence - 1
                     int _fvgStateForConfluence = array.get(fvgStates, fi)
                     int _fvgDirectionForConfluence = array.get(fvgDirections, fi)
-                    if _fvgStateForConfluence < 2 and _obDirectionForConfluence == _fvgDirectionForConfluence
+                    if _fvgStateForConfluence < 2 and _obDirectionForConfluence == _fvgDirectionForConfluence and (array.get(orderBlockCreatedBars, oi) == bar_index or array.get(fvgCreatedBars, fi) == bar_index)
                         int _obKeyForConfluence = array.get(orderBlockCreatedBars, oi)
                         int _fvgKeyForConfluence = array.get(fvgCreatedBars, fi)
                         bool _confluencePairExists = false
@@ -1064,31 +1064,35 @@ if enableObFvgConfluence and barstate.isconfirmed and not na(atr) and atr > 0
                                     array.shift(confluenceStates)
 
 // Keep a confluence active while both source zones remain usable.
-// A filled FVG or invalidated/removed OB closes the derived confluence box.
+// Re-scan source keys only when an OB/FVG is added, invalidated, or fully filled.
+bool _recheckConfluenceSources = orderBlockDetectedNow or fvgDetectedNow or orderBlockInvalidatedNow or fvgMitigatedNow
 if array.size(confluenceBoxes) > 0
     for ci = 0 to array.size(confluenceBoxes) - 1
         if array.get(confluenceStates, ci) == 0
-            int _obKeyToTrack = array.get(confluenceObCreatedBars, ci)
-            int _fvgKeyToTrack = array.get(confluenceFvgCreatedBars, ci)
-            bool _trackedObActive = false
-            bool _trackedFvgActive = false
-            if array.size(orderBlockBoxes) > 0
-                for oi = 0 to array.size(orderBlockBoxes) - 1
-                    if array.get(orderBlockCreatedBars, oi) == _obKeyToTrack and array.get(orderBlockStates, oi) >= 0
-                        _trackedObActive := true
-            if array.size(fvgBoxes) > 0
-                for fi = 0 to array.size(fvgBoxes) - 1
-                    if array.get(fvgCreatedBars, fi) == _fvgKeyToTrack and array.get(fvgStates, fi) < 2
-                        _trackedFvgActive := true
             box _trackedConfluenceBox = array.get(confluenceBoxes, ci)
-            if _trackedObActive and _trackedFvgActive
-                box.set_right(_trackedConfluenceBox, bar_index + projectionBars)
+            if _recheckConfluenceSources
+                int _obKeyToTrack = array.get(confluenceObCreatedBars, ci)
+                int _fvgKeyToTrack = array.get(confluenceFvgCreatedBars, ci)
+                bool _trackedObActive = false
+                bool _trackedFvgActive = false
+                if array.size(orderBlockBoxes) > 0
+                    for oi = 0 to array.size(orderBlockBoxes) - 1
+                        if array.get(orderBlockCreatedBars, oi) == _obKeyToTrack and array.get(orderBlockStates, oi) >= 0
+                            _trackedObActive := true
+                if array.size(fvgBoxes) > 0
+                    for fi = 0 to array.size(fvgBoxes) - 1
+                        if array.get(fvgCreatedBars, fi) == _fvgKeyToTrack and array.get(fvgStates, fi) < 2
+                            _trackedFvgActive := true
+                if _trackedObActive and _trackedFvgActive
+                    box.set_right(_trackedConfluenceBox, bar_index + projectionBars)
+                else
+                    array.set(confluenceStates, ci, 1)
+                    box.set_right(_trackedConfluenceBox, bar_index)
+                    box.set_border_color(_trackedConfluenceBox, color.gray)
+                    box.set_bgcolor(_trackedConfluenceBox, color.new(color.gray, 88))
+                    box.set_text(_trackedConfluenceBox, array.get(confluenceDirections, ci) == 1 ? "상승 OB+FVG 컨플루언스 | 종료" : "하락 OB+FVG 컨플루언스 | 종료")
             else
-                array.set(confluenceStates, ci, 1)
-                box.set_right(_trackedConfluenceBox, bar_index)
-                box.set_border_color(_trackedConfluenceBox, color.gray)
-                box.set_bgcolor(_trackedConfluenceBox, color.new(color.gray, 88))
-                box.set_text(_trackedConfluenceBox, array.get(confluenceDirections, ci) == 1 ? "상승 OB+FVG 컨플루언스 | 종료" : "하락 OB+FVG 컨플루언스 | 종료")
+                box.set_right(_trackedConfluenceBox, bar_index + projectionBars)
 
 // Candlestick patterns are detected only after the signal candle closes.
 // Targets use a configurable ATR distance; invalidation uses the signal candle extreme.
