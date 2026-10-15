@@ -1,0 +1,1559 @@
+//@version=6
+indicator("통합 패턴 영역 — v1.6 가격 갭 상태 추적", shorttitle="통합패턴 v1.6", overlay=true, max_boxes_count=500, max_labels_count=100)
+
+// -----------------------------------------------------------------------------
+// Universal Pattern Zones — Core prototype
+// Scope in v0.1: Double Top, Double Bottom, Head & Shoulders, Inverse H&S.
+// Candidate zones are displayed before neckline confirmation. A pivot is only
+// registered after the configured right-side bars have closed.
+// This is a pattern-visualization tool, not a guarantee of future price movement.
+// -----------------------------------------------------------------------------
+
+// Inputs
+int pivotLeft         = input.int(5, "피벗 왼쪽 확인 봉 수", minval=2, maxval=30, group="탐지 설정")
+int pivotRight        = input.int(5, "피벗 오른쪽 확인 봉 수", minval=2, maxval=30, group="탐지 설정")
+float equalTolAtr     = input.float(0.75, "어깨·고점·저점 허용 오차 (ATR)", minval=0.1, maxval=3.0, step=0.05, group="탐지 설정")
+float minHeadAtr      = input.float(0.60, "머리 최소 돌출 폭 (ATR)", minval=0.1, maxval=5.0, step=0.05, group="탐지 설정")
+int atrLength         = input.int(14, "ATR 계산 기간", minval=2, maxval=100, group="탐지 설정")
+bool enableDouble     = input.bool(true, "이중천장·이중바닥 탐지", group="패턴")
+bool enableHeadShoulders = input.bool(true, "헤드앤숄더·역헤드앤숄더 탐지", group="패턴")
+bool enableFVG          = input.bool(true, "가격 불균형(FVG) 탐지", group="패턴")
+float minFvgAtr         = input.float(0.15, "FVG 최소 크기 (ATR)", minval=0.0, maxval=3.0, step=0.05, group="FVG 설정")
+int maxFvgBoxes         = input.int(75, "FVG 최대 표시 개수", minval=5, maxval=150, group="FVG 설정")
+bool enableClassicGaps   = input.bool(true, "일반 가격 갭 탐지", group="가격 갭")
+float minClassicGapAtr  = input.float(0.20, "최소 가격 갭 크기 (ATR)", minval=0.05, maxval=3.0, step=0.05, group="가격 갭")
+int maxClassicGapBoxes  = input.int(30, "가격 갭 박스 최대 개수", minval=5, maxval=100, group="가격 갭")
+bool enableCandles      = input.bool(true, "캔들 패턴 탐지", group="패턴")
+bool enableGeometry     = input.bool(true, "삼각형·쐐기 패턴 탐지", group="패턴")
+bool enableContinuation  = input.bool(true, "깃발·페넌트·박스권·채널 탐지", group="추세 지속 패턴")
+float impulseThresholdAtr = input.float(1.5, "선행 추세 최소 폭 (ATR)", minval=0.5, maxval=5.0, step=0.25, group="추세 지속 패턴")
+int maxRetestBoxes       = input.int(30, "돌파선 재시험 박스 최대 개수", minval=5, maxval=75, group="돌파·재시험")
+float retestBufferAtr    = input.float(0.15, "돌파선 재시험 허용 폭 (ATR)", minval=0.05, maxval=1.0, step=0.05, group="돌파·재시험")
+float minGeometryMoveAtr = input.float(0.35, "패턴 판정 최소 스윙 폭 (ATR)", minval=0.05, maxval=3.0, step=0.05, group="삼각형·쐐기")
+float flatBoundaryAtr    = input.float(0.45, "수평 경계 허용 오차 (ATR)", minval=0.05, maxval=2.0, step=0.05, group="삼각형·쐐기")
+int maxGeometryBoxes     = input.int(35, "형성 박스 최대 개수", minval=5, maxval=50, group="삼각형·쐐기")
+float minCandleBodyAtr  = input.float(0.10, "최소 캔들 몸통 크기 (ATR)", minval=0.0, maxval=3.0, step=0.05, group="캔들 설정")
+float candleWickRatio   = input.float(2.0, "핀바 꼬리/몸통 비율", minval=1.0, maxval=6.0, step=0.25, group="캔들 설정")
+bool enableCandleExpansion = input.bool(true, "모닝스타·이브닝스타·해머·슈팅스타·적삼병·흑삼병 탐지", group="캔들 설정")
+float candleStarBodyRatio = input.float(0.50, "별형 중간 캔들 최대 몸통 비율", minval=0.10, maxval=0.90, step=0.05, group="캔들 설정")
+bool enableCandleAdvanced = input.bool(true, "도지·하라미·관통형·먹구름형·집게형·내/외부 바·장대캔들", group="캔들 설정")
+float candleDojiBodyRatio = input.float(0.10, "도지 최대 몸통/전체 범위", minval=0.02, maxval=0.25, step=0.01, group="캔들 설정")
+float candleHaramiBodyRatio = input.float(0.60, "하라미 몸통 최대 비율", minval=0.20, maxval=0.90, step=0.05, group="캔들 설정")
+float candleTweezersToleranceAtr = input.float(0.10, "집게형 고점·저점 허용 오차 (ATR)", minval=0.02, maxval=0.50, step=0.01, group="캔들 설정")
+float candleLongBodyAtr = input.float(1.50, "장대 캔들 최소 몸통 (ATR)", minval=0.50, maxval=4.0, step=0.25, group="캔들 설정")
+float candleTargetAtr   = input.float(1.0, "캔들 목표 거리 (ATR)", minval=0.25, maxval=5.0, step=0.25, group="캔들 설정")
+int maxCandleZones      = input.int(50, "캔들 목표 박스 최대 개수", minval=5, maxval=150, group="캔들 설정")
+int projectionBars    = input.int(40, "박스 오른쪽 투영 길이 (봉)", minval=5, maxval=500, group="표시 설정")
+float zoneHalfWidthAtr = input.float(0.25, "목표 영역 절반 폭 (ATR)", minval=0.05, maxval=2.0, step=0.05, group="표시 설정")
+int maxPatternBoxes   = input.int(35, "목표 박스 최대 개수", minval=5, maxval=150, group="표시 설정")
+bool enableRoundingPatterns = input.bool(true, "라운딩 바텀·탑 탐지", group="차트 패턴")
+bool enableCupHandlePattern = input.bool(true, "컵앤핸들 탐지", group="차트 패턴")
+bool enableBroadeningPatterns = input.bool(true, "확장형 천장·바닥 탐지", group="차트 패턴")
+bool enableDiamondPatterns = input.bool(true, "다이아몬드 천장·바닥 탐지", group="차트 패턴")
+float chartPatternMinDepthAtr = input.float(0.75, "차트 패턴 최소 높이 (ATR)", minval=0.25, maxval=4.0, step=0.25, group="차트 패턴")
+float chartPatternRimToleranceAtr = input.float(0.75, "라운딩·컵 테두리 허용 오차 (ATR)", minval=0.1, maxval=2.5, step=0.05, group="차트 패턴")
+float chartPatternExpansionAtr = input.float(0.15, "확장형 최소 스윙 확장 (ATR)", minval=0.05, maxval=1.0, step=0.05, group="차트 패턴")
+bool showPivots       = input.bool(false, "확정 피벗 표시", group="표시 설정")
+bool enableSMC        = input.bool(true, "BOS·CHOCH·유동성 스윕 탐지", group="ICT/SMC 구조")
+bool enableOrderBlocks = input.bool(true, "오더 블록 탐지·재방문·무효화", group="ICT/SMC 구조")
+int maxSMCBoxes       = input.int(60, "BOS·CHOCH·스윕 박스 최대 개수", minval=10, maxval=100, group="ICT/SMC 구조")
+int obLookback        = input.int(20, "오더 블록 원천 캔들 탐색 범위", minval=2, maxval=50, group="ICT/SMC 구조")
+int maxOrderBlockBoxes = input.int(25, "오더 블록 최대 개수", minval=5, maxval=60, group="ICT/SMC 구조")
+bool enableEqualLiquidity = input.bool(true, "EQH/EQL 유동성 풀 탐지", group="ICT/SMC 구조")
+float equalLiquidityTolAtr = input.float(0.25, "EQH/EQL 허용 오차 (ATR)", minval=0.05, maxval=1.5, step=0.05, group="ICT/SMC 구조")
+int maxEqualPoolBoxes = input.int(20, "EQH/EQL 유동성 풀 최대 개수", minval=5, maxval=40, group="ICT/SMC 구조")
+bool enableHTFLiquidityContext = input.bool(true, "상위 시간대 유동성 컨텍스트", group="HTF 유동성")
+string liquidityContextTF = input.timeframe("240", "유동성 기준 상위 시간대", group="HTF 유동성")
+int liquidityRangeBars = input.int(20, "상위 시간대 범위 계산 봉 수", minval=5, maxval=100, group="HTF 유동성")
+float htfExternalBandAtr = input.float(0.75, "내부·외부 구분 경계 폭 (차트 ATR)", minval=0.10, maxval=3.0, step=0.05, group="HTF 유동성")
+bool qualityUseVolume = input.bool(false, "거래량 평균 필터", group="품질 필터")
+int qualityVolumeLength = input.int(20, "거래량 평균 기간", minval=2, maxval=200, group="품질 필터")
+float qualityVolumeMultiplier = input.float(1.0, "평균 대비 최소 거래량 배수", minval=0.1, maxval=5.0, step=0.1, group="품질 필터")
+bool qualityUseAtr = input.bool(false, "최소 ATR 변동성 필터", group="품질 필터")
+float qualityMinAtrPercent = input.float(0.20, "최소 ATR / 종가 (%)", minval=0.01, maxval=10.0, step=0.05, group="품질 필터")
+bool qualityUseHTFTrend = input.bool(false, "상위 시간대 EMA 추세 필터", group="품질 필터")
+string qualityTrendTF = input.timeframe("240", "추세 기준 상위 시간대", group="품질 필터")
+int qualityTrendEmaLength = input.int(50, "상위 시간대 EMA 기간", minval=5, maxval=300, group="품질 필터")
+bool qualityUseSession = input.bool(false, "거래 세션 필터", group="품질 필터")
+string qualitySession = input.session("0930-1600:23456", "허용 세션", group="품질 필터")
+string qualitySessionTimezone = input.string("America/New_York", "세션 시간대", options=["America/New_York", "Europe/London", "Asia/Tokyo", "Asia/Seoul", "Etc/UTC"], group="품질 필터")
+string obRangeMode = input.string("전체 캔들", "오더 블록 영역 기준", options=["전체 캔들", "몸통"], group="ICT/SMC 구조")
+bool enableHarmonic = input.bool(true, "하모닉 패턴 탐지", group="하모닉 패턴")
+float harmonicRatioTolerance = input.float(0.08, "피보나치 비율 허용 오차", minval=0.02, maxval=0.20, step=0.01, group="하모닉 패턴")
+float harmonicABCDTolerance = input.float(0.12, "AB=CD 길이 허용 오차", minval=0.03, maxval=0.30, step=0.01, group="하모닉 패턴")
+float harmonicPRZAtr = input.float(0.25, "D점 반전 영역 폭 (ATR)", minval=0.05, maxval=1.5, step=0.05, group="하모닉 패턴")
+int maxHarmonicBoxes = input.int(25, "하모닉 박스 최대 개수", minval=5, maxval=60, group="하모닉 패턴")
+bool enableCypher = input.bool(true, "사이퍼 패턴 탐지", group="하모닉 패턴")
+bool enableShark = input.bool(true, "샤크 패턴 탐지", group="하모닉 패턴")
+bool enableABCDVariants = input.bool(true, "1.272·1.618 AB=CD 변형 탐지", group="하모닉 패턴")
+bool enableObFvgConfluence = input.bool(true, "오더 블록+FVG 겹침 탐지", group="OB/FVG 컨플루언스")
+float confluenceLiquidityTolAtr = input.float(0.25, "EQH/EQL 근접 허용 폭 (ATR)", minval=0.05, maxval=1.5, step=0.05, group="OB/FVG 컨플루언스")
+int maxConfluenceBoxes = input.int(30, "컨플루언스 박스 최대 개수", minval=5, maxval=75, group="OB/FVG 컨플루언스")
+
+float atr = ta.atr(atrLength)
+
+// Use only the previous confirmed higher-timeframe rolling range.
+// Offsetting the requested expressions by [1] and using lookahead_on keeps
+// these contextual levels stable between higher-timeframe bar closes.
+float htfRangeHighRaw = request.security(syminfo.tickerid, liquidityContextTF, ta.highest(high, liquidityRangeBars)[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on)
+float htfRangeLowRaw = request.security(syminfo.tickerid, liquidityContextTF, ta.lowest(low, liquidityRangeBars)[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on)
+bool htfContextActive = enableHTFLiquidityContext and timeframe.in_seconds(liquidityContextTF) > timeframe.in_seconds()
+float htfRangeHigh = htfContextActive ? htfRangeHighRaw : na
+float htfRangeLow = htfContextActive ? htfRangeLowRaw : na
+float htfLiquidityBuffer = math.max(nz(atr, syminfo.mintick) * htfExternalBandAtr, syminfo.mintick * 2.0)
+float qualityVolumeAverage = ta.sma(volume, qualityVolumeLength)
+float qualityAtrPercent = not na(atr) and close > 0 ? atr / close * 100.0 : na
+float qualityTrendClose = request.security(syminfo.tickerid, qualityTrendTF, close[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on)
+float qualityTrendEma = request.security(syminfo.tickerid, qualityTrendTF, ta.ema(close, qualityTrendEmaLength)[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on)
+bool qualityTrendContextActive = timeframe.in_seconds(qualityTrendTF) > timeframe.in_seconds()
+bool qualitySessionActive = not na(time(timeframe.period, qualitySession, qualitySessionTimezone))
+
+float pivotHigh = ta.pivothigh(high, pivotLeft, pivotRight)
+float pivotLow = ta.pivotlow(low, pivotLeft, pivotRight)
+
+// Pivot storage: type 1 = high, type -1 = low. Consecutive pivots of the same
+// type are compressed, retaining the more extreme price.
+var array<int> pivotTypes = array.new_int()
+var array<int> pivotBars = array.new_int()
+var array<float> pivotPrices = array.new_float()
+
+// Drawing/state storage for target zones.
+var array<box> patternBoxes = array.new<box>()
+var array<float> patternNecklines = array.new<float>()
+var array<float> patternTargets = array.new<float>()
+var array<float> patternInvalidations = array.new<float>()
+var array<int> patternDirections = array.new<int>()   // 1 = bullish, -1 = bearish
+var array<int> patternStates = array.new<int>()       // 0 = candidate, 1 = confirmed, 2 = target reached, -1 = invalidated
+var array<string> patternNames = array.new<string>()
+
+// Separate lifecycle storage for Fair Value Gap zones. FVG state: 0 = active,
+// 1 = partially mitigated, 2 = fully mitigated.
+var array<box> fvgBoxes = array.new<box>()
+var array<float> fvgTops = array.new<float>()
+var array<float> fvgBottoms = array.new<float>()
+var array<int> fvgDirections = array.new<int>()  // 1 = bullish, -1 = bearish
+var array<int> fvgStates = array.new<int>()
+var array<int> fvgCreatedBars = array.new<int>()
+
+// Classic consecutive-bar price gaps. State: 0 = unfilled, 1 = partial fill, 2 = fully filled.
+var array<box> priceGapBoxes = array.new<box>()
+var array<float> priceGapTops = array.new<float>()
+var array<float> priceGapBottoms = array.new<float>()
+var array<int> priceGapDirections = array.new<int>() // 1 = bullish gap, -1 = bearish gap
+var array<int> priceGapStates = array.new<int>()
+var array<int> priceGapCreatedBars = array.new<int>()
+
+// Candle-signal target zones: 0 = active, 1 = target reached, -1 = invalidated.
+var array<box> candleBoxes = array.new<box>()
+var array<float> candleInvalidations = array.new<float>()
+var array<int> candleDirections = array.new<int>()
+var array<int> candleStates = array.new<int>()
+var array<string> candleNames = array.new<string>()
+
+// Triangle/wedge structures. State 0 = forming; 1 = breakout up; -1 = breakout down; 2 = apex/expired.
+var array<box> geometryBoxes = array.new<box>()
+var array<float> geometryUpperAnchors = array.new<float>()
+var array<int> geometryUpperAnchorBars = array.new<int>()
+var array<float> geometryUpperSlopes = array.new<float>()
+var array<float> geometryLowerAnchors = array.new<float>()
+var array<int> geometryLowerAnchorBars = array.new<int>()
+var array<float> geometryLowerSlopes = array.new<float>()
+var array<float> geometryHeights = array.new<float>()
+var array<int> geometryStates = array.new<int>()
+var array<string> geometryNames = array.new<string>()
+var int lastGeometryPivotBar = na
+
+// Retest zones: 0 = waiting, 1 = successful retest, -1 = failed retest, 2 = expired.
+var array<box> retestBoxes = array.new<box>()
+var array<float> retestLevels = array.new<float>()
+var array<int> retestDirections = array.new<int>()
+var array<int> retestStates = array.new<int>()
+var array<int> retestStartBars = array.new<int>()
+
+// ICT/SMC swing tracking. A swing becomes usable only after pivotRight bars.
+var float smcLastSwingHigh = na
+var int smcLastSwingHighBar = na
+var float smcPreviousSwingHigh = na
+var int smcPreviousSwingHighBar = na
+var float smcLastSwingLow = na
+var int smcLastSwingLowBar = na
+var float smcPreviousSwingLow = na
+var int smcPreviousSwingLowBar = na
+var int smcBrokenSwingHighBar = na
+var int smcBrokenSwingLowBar = na
+var int smcSweptSwingHighBar = na
+var int smcSweptSwingLowBar = na
+var int smcTrendBias = 0  // 1 bullish, -1 bearish, 0 neutral
+var array<box> smcSignalBoxes = array.new<box>()
+
+// Order block lifecycle: 0 active, 1 revisited/mitigated, -1 invalidated.
+var array<box> orderBlockBoxes = array.new<box>()
+var array<float> orderBlockTops = array.new<float>()
+var array<float> orderBlockBottoms = array.new<float>()
+var array<int> orderBlockDirections = array.new<int>()
+var array<int> orderBlockStates = array.new<int>()
+var array<int> orderBlockCreatedBars = array.new<int>()
+
+// OB/FVG confluence lifecycle: 0 = active, 1 = ended.
+// Pair keys use source creation bars to avoid duplicate boxes per source pair.
+var array<box> confluenceBoxes = array.new<box>()
+var array<int> confluenceObCreatedBars = array.new<int>()
+var array<int> confluenceFvgCreatedBars = array.new<int>()
+var array<int> confluenceDirections = array.new<int>()
+var array<int> confluenceStates = array.new<int>()
+
+// Equal High / Equal Low liquidity-pool lifecycle: 0 active, 1 swept.
+var array<box> equalPoolBoxes = array.new<box>()
+var array<float> equalPoolPrices = array.new<float>()
+var array<int> equalPoolDirections = array.new<int>() // 1 = EQH, -1 = EQL
+var array<int> equalPoolStates = array.new<int>()
+var array<int> equalPoolStartBars = array.new<int>()
+
+// Harmonic completion zones are drawn when the fifth confirmed pivot (D) arrives.
+var array<box> harmonicBoxes = array.new<box>()
+var int lastHarmonicPivotBar = na
+
+// Shared directional quality gate. All filters are optional and off by default.
+f_qualityPass(int _direction) =>
+    bool _pass = true
+    if qualityUseVolume
+        _pass := _pass and not na(volume) and not na(qualityVolumeAverage) and volume >= qualityVolumeAverage * qualityVolumeMultiplier
+    if qualityUseAtr
+        _pass := _pass and not na(qualityAtrPercent) and qualityAtrPercent >= qualityMinAtrPercent
+    if qualityUseSession
+        _pass := _pass and qualitySessionActive
+    if qualityUseHTFTrend and _direction != 0 and qualityTrendContextActive
+        bool _trendDataReady = not na(qualityTrendClose) and not na(qualityTrendEma)
+        bool _trendMatches = _direction == 1 ? qualityTrendClose > qualityTrendEma : qualityTrendClose < qualityTrendEma
+        _pass := _pass and _trendDataReady and _trendMatches
+    _pass
+
+// Keep the SMC event drawings bounded; oldest event boxes are deleted first.
+f_keepSMCBox(array<box> _store, box _item, int _capacity) =>
+    array.push(_store, _item)
+    if array.size(_store) > _capacity
+        box _oldItem = array.shift(_store)
+        box.delete(_oldItem)
+    true
+
+// Add or update a pivot while maintaining an alternating swing sequence.
+f_addPivot(array<int> _types, array<int> _bars, array<float> _prices, int _type, int _bar, float _price, int _capacity) =>
+    bool changed = false
+    int _size = array.size(_types)
+    if _size == 0
+        array.push(_types, _type)
+        array.push(_bars, _bar)
+        array.push(_prices, _price)
+        changed := true
+    else
+        int _last = _size - 1
+        int _lastType = array.get(_types, _last)
+        float _lastPrice = array.get(_prices, _last)
+        if _lastType == _type
+            bool _moreExtreme = (_type == 1 and _price > _lastPrice) or (_type == -1 and _price < _lastPrice)
+            if _moreExtreme
+                array.set(_bars, _last, _bar)
+                array.set(_prices, _last, _price)
+                changed := true
+        else
+            array.push(_types, _type)
+            array.push(_bars, _bar)
+            array.push(_prices, _price)
+            changed := true
+            if array.size(_types) > _capacity
+                array.shift(_types)
+                array.shift(_bars)
+                array.shift(_prices)
+    changed
+
+// Create a target zone and keep drawing/state arrays aligned.
+f_storePattern(array<box> _boxes, array<float> _necks, array<float> _targets, array<float> _invalids, array<int> _dirs, array<int> _states, array<string> _names, int _leftBar, float _target, float _zoneWidth, float _neck, float _invalidation, int _direction, string _name, int _projection, int _maxCount) =>
+    bool _stored = false
+    if f_qualityPass(_direction)
+        color _border = _direction == 1 ? color.lime : color.red
+        color _fill = color.new(_border, 87)
+        box _b = box.new(left=_leftBar, top=_target + _zoneWidth, right=bar_index + _projection, bottom=math.max(syminfo.mintick, _target - _zoneWidth), border_color=_border, border_width=1, bgcolor=_fill, text=_name + " | 후보", text_color=color.white, text_size=size.small)
+        array.push(_boxes, _b)
+        array.push(_necks, _neck)
+        array.push(_targets, _target)
+        array.push(_invalids, _invalidation)
+        array.push(_dirs, _direction)
+        array.push(_states, 0)
+        array.push(_names, _name)
+        if array.size(_boxes) > _maxCount
+            box _old = array.shift(_boxes)
+            box.delete(_old)
+            array.shift(_necks)
+            array.shift(_targets)
+            array.shift(_invalids)
+            array.shift(_dirs)
+            array.shift(_states)
+            array.shift(_names)
+        _stored := true
+    _stored
+f_storeConfirmedTarget(array<box> _boxes, array<float> _necks, array<float> _targets, array<float> _invalids, array<int> _dirs, array<int> _states, array<string> _names, int _leftBar, float _target, float _zoneWidth, float _neck, float _invalidation, int _direction, string _name, int _projection, int _maxCount) =>
+    bool _stored = false
+    if f_qualityPass(_direction)
+        color _border = _direction == 1 ? color.lime : color.red
+        box _b = box.new(left=_leftBar, top=_target + _zoneWidth, right=bar_index + _projection, bottom=math.max(syminfo.mintick, _target - _zoneWidth), border_color=_border, border_width=1, bgcolor=color.new(_border, 80), text=_name + " | 돌파 확인", text_color=color.white, text_size=size.small)
+        array.push(_boxes, _b)
+        array.push(_necks, _neck)
+        array.push(_targets, _target)
+        array.push(_invalids, _invalidation)
+        array.push(_dirs, _direction)
+        array.push(_states, 1)
+        array.push(_names, _name)
+        if array.size(_boxes) > _maxCount
+            box _old = array.shift(_boxes)
+            box.delete(_old)
+            array.shift(_necks)
+            array.shift(_targets)
+            array.shift(_invalids)
+            array.shift(_dirs)
+            array.shift(_states)
+            array.shift(_names)
+        _stored := true
+    _stored
+// This is a configurable proxy for internal/external liquidity, not a universal ICT definition.
+f_liquidityClass(float _price, int _direction, float _rangeHigh, float _rangeLow, float _buffer, bool _enabled) =>
+    string _class = "HTF 미적용"
+    if _enabled
+        if not na(_rangeHigh) and not na(_rangeLow) and _rangeHigh > _rangeLow
+            if _direction == 1
+                _class := _price >= _rangeHigh - _buffer ? "외부 유동성" : _price < _rangeLow ? "범위 외부" : "내부 유동성"
+            else
+                _class := _price <= _rangeLow + _buffer ? "외부 유동성" : _price > _rangeHigh ? "범위 외부" : "내부 유동성"
+        else
+            _class := "HTF 데이터 대기"
+    _class
+
+f_liquidityBoundaryLabel(float _price, float _rangeHigh, float _rangeLow, float _buffer, bool _enabled) =>
+    string _label = ""
+    if _enabled and not na(_rangeHigh) and not na(_rangeLow)
+        if math.abs(_price - _rangeHigh) <= _buffer
+            _label := " | HTF 상단 근접"
+        else if math.abs(_price - _rangeLow) <= _buffer
+            _label := " | HTF 하단 근접"
+    _label
+
+// Maintain the latest confirmed ICT/SMC swing references.
+if barstate.isconfirmed
+    if not na(pivotHigh)
+        smcPreviousSwingHigh := smcLastSwingHigh
+        smcPreviousSwingHighBar := smcLastSwingHighBar
+        smcLastSwingHigh := pivotHigh
+        smcLastSwingHighBar := bar_index - pivotRight
+    if not na(pivotLow)
+        smcPreviousSwingLow := smcLastSwingLow
+        smcPreviousSwingLowBar := smcLastSwingLowBar
+        smcLastSwingLow := pivotLow
+        smcLastSwingLowBar := bar_index - pivotRight
+
+// Register confirmed pivots. Simultaneous high/low pivots are ignored because
+// their chronological order is ambiguous on a single candle.
+bool newPivot = false
+if barstate.isconfirmed
+    if not na(pivotHigh) and na(pivotLow)
+        newPivot := f_addPivot(pivotTypes, pivotBars, pivotPrices, 1, bar_index - pivotRight, pivotHigh, 20)
+    else if not na(pivotLow) and na(pivotHigh)
+        newPivot := f_addPivot(pivotTypes, pivotBars, pivotPrices, -1, bar_index - pivotRight, pivotLow, 20)
+
+// Update existing candidate zones before making new ones.
+bool confirmedPatternNow = false
+bool targetReachedNow = false
+bool invalidatedPatternNow = false
+bool fvgDetectedNow = false
+bool fvgMitigatedNow = false
+bool obFvgConfluenceDetectedNow = false
+bool candleDetectedNow = false
+bool candleTargetReachedNow = false
+bool candleInvalidatedNow = false
+bool candleMorningStarNow = false
+bool candleEveningStarNow = false
+bool candleHammerNow = false
+bool candleShootingStarNow = false
+bool candleThreeSoldiersNow = false
+bool candleThreeCrowsNow = false
+bool geometryCandidateNow = false
+bool geometryBreakoutNow = false
+bool geometryExpiredNow = false
+bool retestHeldNow = false
+bool retestFailedNow = false
+bool retestExpiredNow = false
+bool smcBosBullNow = false
+bool smcBosBearNow = false
+bool smcChochBullNow = false
+bool smcChochBearNow = false
+bool smcBullBreakNow = false
+bool smcBearBreakNow = false
+bool liquiditySweepHighNow = false
+bool liquiditySweepLowNow = false
+bool orderBlockDetectedNow = false
+bool orderBlockMitigatedNow = false
+bool orderBlockInvalidatedNow = false
+bool equalHighPoolDetectedNow = false
+bool equalLowPoolDetectedNow = false
+bool equalHighPoolSweptNow = false
+bool equalLowPoolSweptNow = false
+
+// Build EQH/EQL liquidity pools from two consecutive confirmed pivots.
+// Nearby active pools of the same type are merged to avoid excess overlapping boxes.
+if enableSMC and enableEqualLiquidity and barstate.isconfirmed and not na(atr) and atr > 0 and f_qualityPass(0)
+    float _eqTol = math.max(atr * equalLiquidityTolAtr, syminfo.mintick * 2.0)
+    if not na(pivotHigh) and not na(smcPreviousSwingHigh) and not na(smcPreviousSwingHighBar) and math.abs(pivotHigh - smcPreviousSwingHigh) <= _eqTol
+        float _eqhLevel = (pivotHigh + smcPreviousSwingHigh) / 2.0
+        bool _eqhMerged = false
+        if array.size(equalPoolBoxes) > 0
+            for p = 0 to array.size(equalPoolBoxes) - 1
+                if array.get(equalPoolStates, p) == 0 and array.get(equalPoolDirections, p) == 1 and math.abs(_eqhLevel - array.get(equalPoolPrices, p)) <= _eqTol
+                    _eqhMerged := true
+                    float _mergedLevel = (array.get(equalPoolPrices, p) + _eqhLevel) / 2.0
+                    array.set(equalPoolPrices, p, _mergedLevel)
+                    array.set(equalPoolStartBars, p, bar_index)
+                    box _pool = array.get(equalPoolBoxes, p)
+                    box.set_left(_pool, math.min(box.get_left(_pool), smcPreviousSwingHighBar))
+                    box.set_top(_pool, _mergedLevel + _eqTol)
+                    box.set_bottom(_pool, math.max(syminfo.mintick, _mergedLevel - _eqTol))
+                    box.set_right(_pool, bar_index + projectionBars)
+                    string _eqhClass = f_liquidityClass(_mergedLevel, 1, htfRangeHigh, htfRangeLow, htfLiquidityBuffer, htfContextActive)
+                    string _eqhBoundary = f_liquidityBoundaryLabel(_mergedLevel, htfRangeHigh, htfRangeLow, htfLiquidityBuffer, htfContextActive)
+                    box.set_text(_pool, "EQH 유동성 풀 | " + _eqhClass + _eqhBoundary + " | 추가 확인")
+        if not _eqhMerged
+            box _eqhBox = box.new(left=smcPreviousSwingHighBar, top=_eqhLevel + _eqTol, right=bar_index + projectionBars, bottom=math.max(syminfo.mintick, _eqhLevel - _eqTol), border_color=color.orange, border_width=1, bgcolor=color.new(color.orange, 87), text="EQH 유동성 풀", text_color=color.white, text_size=size.small)
+            array.push(equalPoolBoxes, _eqhBox)
+            array.push(equalPoolPrices, _eqhLevel)
+            array.push(equalPoolDirections, 1)
+            array.push(equalPoolStates, 0)
+            array.push(equalPoolStartBars, bar_index)
+            if array.size(equalPoolBoxes) > maxEqualPoolBoxes
+                box _oldPool = array.shift(equalPoolBoxes)
+                box.delete(_oldPool)
+                array.shift(equalPoolPrices)
+                array.shift(equalPoolDirections)
+                array.shift(equalPoolStates)
+                array.shift(equalPoolStartBars)
+        equalHighPoolDetectedNow := true
+
+    if not na(pivotLow) and not na(smcPreviousSwingLow) and not na(smcPreviousSwingLowBar) and math.abs(pivotLow - smcPreviousSwingLow) <= _eqTol
+        float _eqlLevel = (pivotLow + smcPreviousSwingLow) / 2.0
+        bool _eqlMerged = false
+        if array.size(equalPoolBoxes) > 0
+            for p = 0 to array.size(equalPoolBoxes) - 1
+                if array.get(equalPoolStates, p) == 0 and array.get(equalPoolDirections, p) == -1 and math.abs(_eqlLevel - array.get(equalPoolPrices, p)) <= _eqTol
+                    _eqlMerged := true
+                    float _mergedLevel = (array.get(equalPoolPrices, p) + _eqlLevel) / 2.0
+                    array.set(equalPoolPrices, p, _mergedLevel)
+                    array.set(equalPoolStartBars, p, bar_index)
+                    box _pool = array.get(equalPoolBoxes, p)
+                    box.set_left(_pool, math.min(box.get_left(_pool), smcPreviousSwingLowBar))
+                    box.set_top(_pool, _mergedLevel + _eqTol)
+                    box.set_bottom(_pool, math.max(syminfo.mintick, _mergedLevel - _eqTol))
+                    box.set_right(_pool, bar_index + projectionBars)
+                    string _eqlClass = f_liquidityClass(_mergedLevel, -1, htfRangeHigh, htfRangeLow, htfLiquidityBuffer, htfContextActive)
+                    string _eqlBoundary = f_liquidityBoundaryLabel(_mergedLevel, htfRangeHigh, htfRangeLow, htfLiquidityBuffer, htfContextActive)
+                    box.set_text(_pool, "EQL 유동성 풀 | " + _eqlClass + _eqlBoundary + " | 추가 확인")
+        if not _eqlMerged
+            box _eqlBox = box.new(left=smcPreviousSwingLowBar, top=_eqlLevel + _eqTol, right=bar_index + projectionBars, bottom=math.max(syminfo.mintick, _eqlLevel - _eqTol), border_color=color.aqua, border_width=1, bgcolor=color.new(color.aqua, 87), text="EQL 유동성 풀", text_color=color.white, text_size=size.small)
+            array.push(equalPoolBoxes, _eqlBox)
+            array.push(equalPoolPrices, _eqlLevel)
+            array.push(equalPoolDirections, -1)
+            array.push(equalPoolStates, 0)
+            array.push(equalPoolStartBars, bar_index)
+            if array.size(equalPoolBoxes) > maxEqualPoolBoxes
+                box _oldPool = array.shift(equalPoolBoxes)
+                box.delete(_oldPool)
+                array.shift(equalPoolPrices)
+                array.shift(equalPoolDirections)
+                array.shift(equalPoolStates)
+                array.shift(equalPoolStartBars)
+        equalLowPoolDetectedNow := true
+
+// Update internal/external class and HTF-edge context for every pool.
+// A pool can be swept once: wick beyond the level, then close back through it.
+if array.size(equalPoolBoxes) > 0 and barstate.isconfirmed
+    for p = 0 to array.size(equalPoolBoxes) - 1
+        box _pool = array.get(equalPoolBoxes, p)
+        int _poolState = array.get(equalPoolStates, p)
+        float _level = array.get(equalPoolPrices, p)
+        int _direction = array.get(equalPoolDirections, p)
+        string _poolClass = f_liquidityClass(_level, _direction, htfRangeHigh, htfRangeLow, htfLiquidityBuffer, htfContextActive)
+        string _poolBoundary = f_liquidityBoundaryLabel(_level, htfRangeHigh, htfRangeLow, htfLiquidityBuffer, htfContextActive)
+        string _poolKind = _direction == 1 ? "EQH 유동성 풀" : "EQL 유동성 풀"
+        if _poolState == 0
+            int _startBar = array.get(equalPoolStartBars, p)
+            bool _poolSwept = bar_index > _startBar and (_direction == 1 ? high > _level and close < _level : low < _level and close > _level)
+            if _poolSwept
+                array.set(equalPoolStates, p, 1)
+                box.set_right(_pool, bar_index)
+                box.set_border_color(_pool, color.gray)
+                box.set_bgcolor(_pool, color.new(color.gray, 84))
+                box.set_text(_pool, _poolKind + " | 스윕 완료 | " + _poolClass + _poolBoundary)
+                if _direction == 1
+                    equalHighPoolSweptNow := true
+                else
+                    equalLowPoolSweptNow := true
+            else
+                box.set_right(_pool, bar_index + projectionBars)
+                box.set_text(_pool, _poolKind + " | " + _poolClass + _poolBoundary)
+                if _poolClass == "외부 유동성"
+                    color _externalColor = _direction == 1 ? color.red : color.lime
+                    box.set_border_color(_pool, _externalColor)
+                    box.set_bgcolor(_pool, color.new(_externalColor, 86))
+                else if _poolClass == "내부 유동성"
+                    color _internalColor = _direction == 1 ? color.orange : color.aqua
+                    box.set_border_color(_pool, _internalColor)
+                    box.set_bgcolor(_pool, color.new(_internalColor, 87))
+
+// ICT/SMC structure breaks use confirmed swing levels and candle closes.
+// A first break in the opposite direction of the tracked bias is CHOCH;
+// otherwise the event is BOS. The same swing level can trigger only once.
+if enableSMC and barstate.isconfirmed and not na(atr) and atr > 0
+    bool _smcBullBreak = not na(smcLastSwingHigh) and not na(smcLastSwingHighBar) and bar_index > smcLastSwingHighBar + pivotRight and close > smcLastSwingHigh and close[1] <= smcLastSwingHigh and (na(smcBrokenSwingHighBar) or smcBrokenSwingHighBar != smcLastSwingHighBar) and f_qualityPass(1)
+    bool _smcBearBreak = not na(smcLastSwingLow) and not na(smcLastSwingLowBar) and bar_index > smcLastSwingLowBar + pivotRight and close < smcLastSwingLow and close[1] >= smcLastSwingLow and (na(smcBrokenSwingLowBar) or smcBrokenSwingLowBar != smcLastSwingLowBar) and f_qualityPass(-1)
+    float _smcBand = math.max(atr * zoneHalfWidthAtr, syminfo.mintick * 2.0)
+    if _smcBullBreak
+        bool _smcIsChoch = smcTrendBias == -1
+        smcBullBreakNow := true
+        smcChochBullNow := _smcIsChoch
+        smcBosBullNow := not _smcIsChoch
+        smcTrendBias := 1
+        smcBrokenSwingHighBar := smcLastSwingHighBar
+        box _smcBreakBox = box.new(left=smcLastSwingHighBar, top=smcLastSwingHigh + _smcBand, right=bar_index + projectionBars, bottom=math.max(syminfo.mintick, smcLastSwingHigh - _smcBand), border_color=_smcIsChoch ? color.aqua : color.lime, border_width=1, bgcolor=color.new(_smcIsChoch ? color.aqua : color.lime, 82), text=_smcIsChoch ? "상승 CHOCH | 성격 변화" : "상승 BOS | 구조 돌파", text_color=color.white, text_size=size.small)
+        f_keepSMCBox(smcSignalBoxes, _smcBreakBox, maxSMCBoxes)
+    if _smcBearBreak
+        bool _smcIsChoch = smcTrendBias == 1
+        smcBearBreakNow := true
+        smcChochBearNow := _smcIsChoch
+        smcBosBearNow := not _smcIsChoch
+        smcTrendBias := -1
+        smcBrokenSwingLowBar := smcLastSwingLowBar
+        box _smcBreakBox = box.new(left=smcLastSwingLowBar, top=smcLastSwingLow + _smcBand, right=bar_index + projectionBars, bottom=math.max(syminfo.mintick, smcLastSwingLow - _smcBand), border_color=_smcIsChoch ? color.orange : color.red, border_width=1, bgcolor=color.new(_smcIsChoch ? color.orange : color.red, 82), text=_smcIsChoch ? "하락 CHOCH | 성격 변화" : "하락 BOS | 구조 돌파", text_color=color.white, text_size=size.small)
+        f_keepSMCBox(smcSignalBoxes, _smcBreakBox, maxSMCBoxes)
+
+    // Liquidity sweep = wick takes a confirmed swing, then the candle closes back inside.
+    bool _sweepHigh = not na(smcLastSwingHigh) and not na(smcLastSwingHighBar) and bar_index > smcLastSwingHighBar + pivotRight and high > smcLastSwingHigh and close < smcLastSwingHigh and (na(smcSweptSwingHighBar) or smcSweptSwingHighBar != smcLastSwingHighBar) and f_qualityPass(-1)
+    bool _sweepLow = not na(smcLastSwingLow) and not na(smcLastSwingLowBar) and bar_index > smcLastSwingLowBar + pivotRight and low < smcLastSwingLow and close > smcLastSwingLow and (na(smcSweptSwingLowBar) or smcSweptSwingLowBar != smcLastSwingLowBar) and f_qualityPass(1)
+    if _sweepHigh
+        liquiditySweepHighNow := true
+        smcSweptSwingHighBar := smcLastSwingHighBar
+        box _sweepBox = box.new(left=bar_index, top=high, right=bar_index + projectionBars, bottom=math.max(syminfo.mintick, smcLastSwingHigh), border_color=color.orange, border_width=1, bgcolor=color.new(color.orange, 82), text="고점 유동성 스윕", text_color=color.white, text_size=size.small)
+        f_keepSMCBox(smcSignalBoxes, _sweepBox, maxSMCBoxes)
+    if _sweepLow
+        liquiditySweepLowNow := true
+        smcSweptSwingLowBar := smcLastSwingLowBar
+        box _sweepBox = box.new(left=bar_index, top=smcLastSwingLow, right=bar_index + projectionBars, bottom=math.max(syminfo.mintick, low), border_color=color.aqua, border_width=1, bgcolor=color.new(color.aqua, 84), text="저점 유동성 스윕", text_color=color.white, text_size=size.small)
+        f_keepSMCBox(smcSignalBoxes, _sweepBox, maxSMCBoxes)
+
+// Update prior order blocks. Retest changes the box to orange; close-through invalidates it.
+if array.size(orderBlockBoxes) > 0 and not na(atr)
+    for i = 0 to array.size(orderBlockBoxes) - 1
+        box _obBox = array.get(orderBlockBoxes, i)
+        int _obState = array.get(orderBlockStates, i)
+        if _obState >= 0
+            float _obTop = array.get(orderBlockTops, i)
+            float _obBottom = array.get(orderBlockBottoms, i)
+            int _obDir = array.get(orderBlockDirections, i)
+            int _obCreated = array.get(orderBlockCreatedBars, i)
+            bool _obInvalid = _obDir == 1 ? close < _obBottom : close > _obTop
+            bool _obTouch = bar_index > _obCreated and low <= _obTop and high >= _obBottom
+            if barstate.isconfirmed and _obInvalid
+                array.set(orderBlockStates, i, -1)
+                box.set_right(_obBox, bar_index)
+                box.set_border_color(_obBox, color.gray)
+                box.set_bgcolor(_obBox, color.new(color.gray, 88))
+                box.set_text(_obBox, _obDir == 1 ? "상승 오더 블록 | 무효화" : "하락 오더 블록 | 무효화")
+                orderBlockInvalidatedNow := true
+            else if barstate.isconfirmed and _obState == 0 and _obTouch
+                array.set(orderBlockStates, i, 1)
+                box.set_border_color(_obBox, color.orange)
+                box.set_bgcolor(_obBox, color.new(color.orange, 84))
+                box.set_text(_obBox, _obDir == 1 ? "상승 오더 블록 | 재방문" : "하락 오더 블록 | 재방문")
+                orderBlockMitigatedNow := true
+            else
+                box.set_right(_obBox, bar_index + projectionBars)
+
+// On a confirmed BOS/CHOCH, find the nearest preceding opposite candle as the order block.
+if enableOrderBlocks and barstate.isconfirmed and (smcBullBreakNow or smcBearBreakNow)
+    int _obDirection = smcBullBreakNow ? 1 : -1
+    bool _obFound = false
+    int _obOffset = na
+    for j = 1 to obLookback
+        bool _oppositeCandle = _obDirection == 1 ? close[j] < open[j] : close[j] > open[j]
+        if not _obFound and _oppositeCandle
+            _obFound := true
+            _obOffset := j
+    if _obFound and not na(_obOffset)
+        float _newObTop = obRangeMode == "몸통" ? math.max(open[_obOffset], close[_obOffset]) : high[_obOffset]
+        float _newObBottom = math.max(syminfo.mintick, obRangeMode == "몸통" ? math.min(open[_obOffset], close[_obOffset]) : low[_obOffset])
+        color _newObColor = _obDirection == 1 ? color.lime : color.red
+        string _obRangeLabel = obRangeMode == "몸통" ? "몸통 기준 활성" : "전체 캔들 기준 활성"
+        string _obDirectionLabel = _obDirection == 1 ? "상승 오더 블록" : "하락 오더 블록"
+        box _newObBox = box.new(left=bar_index - _obOffset, top=_newObTop, right=bar_index + projectionBars, bottom=_newObBottom, border_color=_newObColor, border_width=1, bgcolor=color.new(_newObColor, 86), text=_obDirectionLabel + " | " + _obRangeLabel, text_color=color.white, text_size=size.small)
+        array.push(orderBlockBoxes, _newObBox)
+        array.push(orderBlockTops, _newObTop)
+        array.push(orderBlockBottoms, _newObBottom)
+        array.push(orderBlockDirections, _obDirection)
+        array.push(orderBlockStates, 0)
+        array.push(orderBlockCreatedBars, bar_index)
+        orderBlockDetectedNow := true
+        if array.size(orderBlockBoxes) > maxOrderBlockBoxes
+            box _oldOb = array.shift(orderBlockBoxes)
+            box.delete(_oldOb)
+            array.shift(orderBlockTops)
+            array.shift(orderBlockBottoms)
+            array.shift(orderBlockDirections)
+            array.shift(orderBlockStates)
+            array.shift(orderBlockCreatedBars)
+
+if array.size(patternBoxes) > 0 and not na(atr)
+    for i = 0 to array.size(patternBoxes) - 1
+        box _b = array.get(patternBoxes, i)
+        int _state = array.get(patternStates, i)
+        int _dir = array.get(patternDirections, i)
+        float _neck = array.get(patternNecklines, i)
+        float _invalid = array.get(patternInvalidations, i)
+        string _name = array.get(patternNames, i)
+        if _state == 0
+            bool _invalidated = (_dir == -1 and high > _invalid) or (_dir == 1 and low < _invalid)
+            bool _triggered = (_dir == -1 and close < _neck) or (_dir == 1 and close > _neck)
+            if barstate.isconfirmed and _invalidated
+                array.set(patternStates, i, -1)
+                box.set_right(_b, bar_index)
+                box.set_border_color(_b, color.gray)
+                box.set_bgcolor(_b, color.new(color.gray, 88))
+                box.set_text(_b, _name + " | 무효화")
+                invalidatedPatternNow := true
+            else if barstate.isconfirmed and _triggered
+                array.set(patternStates, i, 1)
+                box.set_border_color(_b, _dir == 1 ? color.lime : color.red)
+                box.set_bgcolor(_b, color.new(_dir == 1 ? color.lime : color.red, 78))
+                box.set_text(_b, _name + " | 완성 확인")
+                confirmedPatternNow := true
+            else
+                box.set_right(_b, bar_index + projectionBars)
+        else if _state == 1
+            bool _hitTarget = high >= box.get_bottom(_b) and low <= box.get_top(_b)
+            if barstate.isconfirmed and _hitTarget
+                array.set(patternStates, i, 2)
+                box.set_right(_b, bar_index)
+                box.set_border_color(_b, color.aqua)
+                box.set_bgcolor(_b, color.new(color.aqua, 80))
+                box.set_text(_b, _name + " | 목표 영역 도달")
+                targetReachedNow := true
+            else
+                box.set_right(_b, bar_index + projectionBars)
+
+
+// Update existing FVG zones. Bullish gaps are filled top-down; bearish gaps
+// are filled bottom-up. Partial and full mitigation are distinguished.
+if array.size(fvgBoxes) > 0 and not na(atr)
+    for i = 0 to array.size(fvgBoxes) - 1
+        box _fb = array.get(fvgBoxes, i)
+        float _top = array.get(fvgTops, i)
+        float _bottom = array.get(fvgBottoms, i)
+        int _dir = array.get(fvgDirections, i)
+        int _state = array.get(fvgStates, i)
+        if _state < 2
+            bool _touched = _dir == 1 ? low <= _top : high >= _bottom
+            bool _filled = _dir == 1 ? low <= _bottom : high >= _top
+            if barstate.isconfirmed and _filled
+                array.set(fvgStates, i, 2)
+                box.set_right(_fb, bar_index)
+                box.set_border_color(_fb, color.gray)
+                box.set_bgcolor(_fb, color.new(color.gray, 86))
+                box.set_text(_fb, _dir == 1 ? "상승 불균형(FVG) | 완전 해소" : "하락 불균형(FVG) | 완전 해소")
+                fvgMitigatedNow := true
+            else if barstate.isconfirmed and _touched and _state == 0
+                array.set(fvgStates, i, 1)
+                box.set_border_color(_fb, color.orange)
+                box.set_bgcolor(_fb, color.new(color.orange, 86))
+                box.set_text(_fb, _dir == 1 ? "상승 불균형(FVG) | 부분 해소" : "하락 불균형(FVG) | 부분 해소")
+                box.set_right(_fb, bar_index + projectionBars)
+            else
+                box.set_right(_fb, bar_index + projectionBars)
+
+// Update active candlestick target zones. The signal candle's extreme is the
+// invalidation reference; the target is an ATR-based projection, not a forecast.
+if array.size(candleBoxes) > 0 and not na(atr)
+    for i = 0 to array.size(candleBoxes) - 1
+        box _cb = array.get(candleBoxes, i)
+        float _invalid = array.get(candleInvalidations, i)
+        int _dir = array.get(candleDirections, i)
+        int _state = array.get(candleStates, i)
+        string _name = array.get(candleNames, i)
+        if _state == 0
+            bool _invalidated = (_dir == 1 and low < _invalid) or (_dir == -1 and high > _invalid)
+            bool _hitTarget = high >= box.get_bottom(_cb) and low <= box.get_top(_cb)
+            if barstate.isconfirmed and _invalidated
+                array.set(candleStates, i, -1)
+                box.set_right(_cb, bar_index)
+                box.set_border_color(_cb, color.gray)
+                box.set_bgcolor(_cb, color.new(color.gray, 88))
+                box.set_text(_cb, _name + " | 무효화")
+                candleInvalidatedNow := true
+            else if barstate.isconfirmed and _hitTarget
+                array.set(candleStates, i, 1)
+                box.set_right(_cb, bar_index)
+                box.set_border_color(_cb, color.aqua)
+                box.set_bgcolor(_cb, color.new(color.aqua, 80))
+                box.set_text(_cb, _name + " | 목표 영역 도달")
+                candleTargetReachedNow := true
+            else
+                box.set_right(_cb, bar_index + projectionBars)
+
+// Monitor breakout retests. A retest is successful only when price touches
+// the breakout band and closes back on the breakout side.
+if array.size(retestBoxes) > 0 and not na(atr)
+    for i = 0 to array.size(retestBoxes) - 1
+        box _rb = array.get(retestBoxes, i)
+        int _rs = array.get(retestStates, i)
+        if _rs == 0
+            float _level = array.get(retestLevels, i)
+            int _dir = array.get(retestDirections, i)
+            int _start = array.get(retestStartBars, i)
+            float _buffer = math.max(atr * retestBufferAtr, syminfo.mintick * 2.0)
+            float _top = _level + _buffer
+            float _bottom = math.max(syminfo.mintick, _level - _buffer)
+            bool _touch = low <= _top and high >= _bottom and bar_index > _start
+            bool _held = _touch and (_dir == 1 ? close > _level : close < _level)
+            bool _failed = _dir == 1 ? close < _bottom : close > _top
+            bool _expired = bar_index - _start > projectionBars
+            if barstate.isconfirmed and _held
+                array.set(retestStates, i, 1)
+                box.set_right(_rb, bar_index)
+                box.set_border_color(_rb, color.aqua)
+                box.set_bgcolor(_rb, color.new(color.aqua, 78))
+                box.set_text(_rb, _dir == 1 ? "상방 돌파선 재시험 성공" : "하방 돌파선 재시험 성공")
+                retestHeldNow := true
+            else if barstate.isconfirmed and _failed
+                array.set(retestStates, i, -1)
+                box.set_right(_rb, bar_index)
+                box.set_border_color(_rb, color.gray)
+                box.set_bgcolor(_rb, color.new(color.gray, 88))
+                box.set_text(_rb, "돌파선 재시험 실패")
+                retestFailedNow := true
+            else if barstate.isconfirmed and _expired
+                array.set(retestStates, i, 2)
+                box.set_right(_rb, bar_index)
+                box.set_border_color(_rb, color.gray)
+                box.set_bgcolor(_rb, color.new(color.gray, 92))
+                box.set_text(_rb, "재시험 대기 시간 만료")
+                retestExpiredNow := true
+            else
+                box.set_right(_rb, bar_index + projectionBars)
+
+// Maintain geometry formation boxes and detect confirmed boundary breakouts.
+if array.size(geometryBoxes) > 0 and not na(atr)
+    for i = 0 to array.size(geometryBoxes) - 1
+        box _gb = array.get(geometryBoxes, i)
+        int _gState = array.get(geometryStates, i)
+        if _gState == 0
+            float _uAnchor = array.get(geometryUpperAnchors, i)
+            int _uBar = array.get(geometryUpperAnchorBars, i)
+            float _uSlope = array.get(geometryUpperSlopes, i)
+            float _lAnchor = array.get(geometryLowerAnchors, i)
+            int _lBar = array.get(geometryLowerAnchorBars, i)
+            float _lSlope = array.get(geometryLowerSlopes, i)
+            float _height = array.get(geometryHeights, i)
+            string _gName = array.get(geometryNames, i)
+            float _upperNow = _uAnchor + _uSlope * (bar_index - _uBar)
+            float _lowerNow = _lAnchor + _lSlope * (bar_index - _lBar)
+            bool _apexReached = _upperNow <= _lowerNow
+            bool _breakUp = close > _upperNow and f_qualityPass(1)
+            bool _breakDown = close < _lowerNow and f_qualityPass(-1)
+            if barstate.isconfirmed and _apexReached
+                array.set(geometryStates, i, 2)
+                box.set_right(_gb, bar_index)
+                box.set_border_color(_gb, color.gray)
+                box.set_bgcolor(_gb, color.new(color.gray, 90))
+                box.set_text(_gb, _gName + " | 수렴 종료")
+                geometryExpiredNow := true
+            else if barstate.isconfirmed and (_breakUp or _breakDown)
+                int _dir = _breakUp ? 1 : -1
+                float _trigger = _dir == 1 ? _upperNow : _lowerNow
+                float _target = _trigger + _dir * _height
+                float _zoneWidth = math.max(atr * zoneHalfWidthAtr, syminfo.mintick * 2.0)
+                array.set(geometryStates, i, _dir)
+                box.set_right(_gb, bar_index)
+                box.set_border_color(_gb, _dir == 1 ? color.lime : color.red)
+                box.set_bgcolor(_gb, color.new(_dir == 1 ? color.lime : color.red, 88))
+                box.set_text(_gb, _gName + (_dir == 1 ? " | 상방 돌파" : " | 하방 돌파"))
+                if _target > syminfo.mintick
+                    f_storeConfirmedTarget(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, bar_index, _target, _zoneWidth, _trigger, _dir == 1 ? _lowerNow : _upperNow, _dir, _gName, projectionBars, maxPatternBoxes)
+                geometryBreakoutNow := true
+                confirmedPatternNow := true
+                float _retestBuffer = math.max(atr * retestBufferAtr, syminfo.mintick * 2.0)
+                box _retestBox = box.new(left=bar_index, top=_trigger + _retestBuffer, right=bar_index + projectionBars, bottom=math.max(syminfo.mintick, _trigger - _retestBuffer), border_color=color.yellow, border_width=1, bgcolor=color.new(color.yellow, 88), text="돌파선 재시험 대기", text_color=color.white, text_size=size.small)
+                array.push(retestBoxes, _retestBox)
+                array.push(retestLevels, _trigger)
+                array.push(retestDirections, _dir)
+                array.push(retestStates, 0)
+                array.push(retestStartBars, bar_index)
+                if array.size(retestBoxes) > maxRetestBoxes
+                    box _oldRetest = array.shift(retestBoxes)
+                    box.delete(_oldRetest)
+                    array.shift(retestLevels)
+                    array.shift(retestDirections)
+                    array.shift(retestStates)
+                    array.shift(retestStartBars)
+            else
+                box.set_right(_gb, bar_index + projectionBars)
+
+// Detect patterns when a newly confirmed pivot is added.
+bool patternCandidateNow = false
+bool harmonicDetectedNow = false
+if newPivot and not na(atr) and atr > 0
+    int n = array.size(pivotTypes)
+    bool madePattern = false
+    float zoneWidth = math.max(atr * zoneHalfWidthAtr, syminfo.mintick * 2.0)
+    float tolerance = atr * equalTolAtr
+
+    // Head & shoulders: High, Low, Higher High (head), Low, High.
+    if enableHeadShoulders and n >= 5 and not madePattern
+        int a0 = n - 5
+        bool hsSequence = array.get(pivotTypes, a0) == 1 and array.get(pivotTypes, a0 + 1) == -1 and array.get(pivotTypes, a0 + 2) == 1 and array.get(pivotTypes, a0 + 3) == -1 and array.get(pivotTypes, a0 + 4) == 1
+        if hsSequence
+            float leftShoulder = array.get(pivotPrices, a0)
+            float neckLeft = array.get(pivotPrices, a0 + 1)
+            float head = array.get(pivotPrices, a0 + 2)
+            float neckRight = array.get(pivotPrices, a0 + 3)
+            float rightShoulder = array.get(pivotPrices, a0 + 4)
+            float neck = (neckLeft + neckRight) / 2.0
+            bool shouldersMatch = math.abs(leftShoulder - rightShoulder) <= tolerance
+            bool headIsHigher = head > math.max(leftShoulder, rightShoulder) + atr * minHeadAtr
+            bool neckValid = neck < math.min(leftShoulder, rightShoulder)
+            float target = neck - (head - neck)
+            float invalidation = math.max(head, math.max(leftShoulder, rightShoulder)) + tolerance
+            if shouldersMatch and headIsHigher and neckValid and target > syminfo.mintick
+                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, array.get(pivotBars, a0 + 4), target, zoneWidth, neck, invalidation, -1, "헤드앤숄더", projectionBars, maxPatternBoxes)
+                madePattern := true
+                patternCandidateNow := true
+
+    // Inverse head & shoulders: Low, High, Lower Low (head), High, Low.
+    if enableHeadShoulders and n >= 5 and not madePattern
+        int a0 = n - 5
+        bool ihsSequence = array.get(pivotTypes, a0) == -1 and array.get(pivotTypes, a0 + 1) == 1 and array.get(pivotTypes, a0 + 2) == -1 and array.get(pivotTypes, a0 + 3) == 1 and array.get(pivotTypes, a0 + 4) == -1
+        if ihsSequence
+            float leftShoulder = array.get(pivotPrices, a0)
+            float neckLeft = array.get(pivotPrices, a0 + 1)
+            float head = array.get(pivotPrices, a0 + 2)
+            float neckRight = array.get(pivotPrices, a0 + 3)
+            float rightShoulder = array.get(pivotPrices, a0 + 4)
+            float neck = (neckLeft + neckRight) / 2.0
+            bool shouldersMatch = math.abs(leftShoulder - rightShoulder) <= tolerance
+            bool headIsLower = head < math.min(leftShoulder, rightShoulder) - atr * minHeadAtr
+            bool neckValid = neck > math.max(leftShoulder, rightShoulder)
+            float target = neck + (neck - head)
+            float invalidation = math.min(head, math.min(leftShoulder, rightShoulder)) - tolerance
+            if shouldersMatch and headIsLower and neckValid and target > syminfo.mintick and invalidation > syminfo.mintick
+                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, array.get(pivotBars, a0 + 4), target, zoneWidth, neck, invalidation, 1, "역헤드앤숄더", projectionBars, maxPatternBoxes)
+                madePattern := true
+                patternCandidateNow := true
+
+    // Double top: High, Low, High, with similar highs.
+    if enableDouble and n >= 3 and not madePattern
+        int a0 = n - 3
+        bool dtSequence = array.get(pivotTypes, a0) == 1 and array.get(pivotTypes, a0 + 1) == -1 and array.get(pivotTypes, a0 + 2) == 1
+        if dtSequence
+            float top1 = array.get(pivotPrices, a0)
+            float neck = array.get(pivotPrices, a0 + 1)
+            float top2 = array.get(pivotPrices, a0 + 2)
+            bool similarTops = math.abs(top1 - top2) <= tolerance
+            float target = neck - (math.max(top1, top2) - neck)
+            float invalidation = math.max(top1, top2) + tolerance
+            if similarTops and neck < math.min(top1, top2) and target > syminfo.mintick
+                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, array.get(pivotBars, a0 + 2), target, zoneWidth, neck, invalidation, -1, "이중천장", projectionBars, maxPatternBoxes)
+                madePattern := true
+                patternCandidateNow := true
+
+    // Double bottom: Low, High, Low, with similar lows.
+    if enableDouble and n >= 3 and not madePattern
+        int a0 = n - 3
+        bool dbSequence = array.get(pivotTypes, a0) == -1 and array.get(pivotTypes, a0 + 1) == 1 and array.get(pivotTypes, a0 + 2) == -1
+        if dbSequence
+            float bottom1 = array.get(pivotPrices, a0)
+            float neck = array.get(pivotPrices, a0 + 1)
+            float bottom2 = array.get(pivotPrices, a0 + 2)
+            bool similarBottoms = math.abs(bottom1 - bottom2) <= tolerance
+            float target = neck + (neck - math.min(bottom1, bottom2))
+            float invalidation = math.min(bottom1, bottom2) - tolerance
+            if similarBottoms and neck > math.max(bottom1, bottom2) and target > syminfo.mintick and invalidation > syminfo.mintick
+                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, array.get(pivotBars, a0 + 2), target, zoneWidth, neck, invalidation, 1, "이중바닥", projectionBars, maxPatternBoxes)
+                madePattern := true
+                patternCandidateNow := true
+
+
+    // Chart patterns use confirmed alternating pivots only. All rules are
+    // simplified geometric approximations; breakout confirmation remains managed
+    // by the common pattern lifecycle (neckline, target, invalidation).
+
+    // Diamond top: expanding swings around a central extreme, then contracting.
+    if enableDiamondPatterns and n >= 9 and not madePattern
+        int d0 = n - 9
+        bool diamondTopSequence = array.get(pivotTypes, d0) == 1 and array.get(pivotTypes, d0 + 1) == -1 and array.get(pivotTypes, d0 + 2) == 1 and array.get(pivotTypes, d0 + 3) == -1 and array.get(pivotTypes, d0 + 4) == 1 and array.get(pivotTypes, d0 + 5) == -1 and array.get(pivotTypes, d0 + 6) == 1 and array.get(pivotTypes, d0 + 7) == -1 and array.get(pivotTypes, d0 + 8) == 1
+        if diamondTopSequence
+            float dh1 = array.get(pivotPrices, d0)
+            float dl1 = array.get(pivotPrices, d0 + 1)
+            float dh2 = array.get(pivotPrices, d0 + 2)
+            float dl2 = array.get(pivotPrices, d0 + 3)
+            float dh3 = array.get(pivotPrices, d0 + 4)
+            float dl3 = array.get(pivotPrices, d0 + 5)
+            float dh4 = array.get(pivotPrices, d0 + 6)
+            float dl4 = array.get(pivotPrices, d0 + 7)
+            float dh5 = array.get(pivotPrices, d0 + 8)
+            bool diamondTopValid = dh2 > dh1 + atr * chartPatternExpansionAtr and dh3 > dh2 + atr * chartPatternExpansionAtr and dh4 < dh3 and dh5 < dh4 and dh5 > dh2 and dl2 < dl1 and dl3 < dl2 and dl4 > dl3 and dl4 < dl2
+            float dTopDepth = dh3 - dl3
+            float dTopTarget = dl3 - dTopDepth
+            float dTopInvalid = dh3 + tolerance
+            if diamondTopValid and dTopDepth >= atr * chartPatternMinDepthAtr and dTopTarget > syminfo.mintick
+                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, array.get(pivotBars, d0 + 8), dTopTarget, zoneWidth, dl3, dTopInvalid, -1, "다이아몬드 천장", projectionBars, maxPatternBoxes)
+                madePattern := true
+                patternCandidateNow := true
+
+    // Diamond bottom: downside/upside swings expand around a central low, then contract.
+    if enableDiamondPatterns and n >= 9 and not madePattern
+        int d0 = n - 9
+        bool diamondBottomSequence = array.get(pivotTypes, d0) == -1 and array.get(pivotTypes, d0 + 1) == 1 and array.get(pivotTypes, d0 + 2) == -1 and array.get(pivotTypes, d0 + 3) == 1 and array.get(pivotTypes, d0 + 4) == -1 and array.get(pivotTypes, d0 + 5) == 1 and array.get(pivotTypes, d0 + 6) == -1 and array.get(pivotTypes, d0 + 7) == 1 and array.get(pivotTypes, d0 + 8) == -1
+        if diamondBottomSequence
+            float dl1 = array.get(pivotPrices, d0)
+            float dh1 = array.get(pivotPrices, d0 + 1)
+            float dl2 = array.get(pivotPrices, d0 + 2)
+            float dh2 = array.get(pivotPrices, d0 + 3)
+            float dl3 = array.get(pivotPrices, d0 + 4)
+            float dh3 = array.get(pivotPrices, d0 + 5)
+            float dl4 = array.get(pivotPrices, d0 + 6)
+            float dh4 = array.get(pivotPrices, d0 + 7)
+            float dl5 = array.get(pivotPrices, d0 + 8)
+            bool diamondBottomValid = dl2 < dl1 - atr * chartPatternExpansionAtr and dl3 < dl2 - atr * chartPatternExpansionAtr and dl4 > dl3 and dl5 > dl4 and dl5 < dl2 and dh2 > dh1 and dh3 > dh2 and dh4 < dh3 and dh4 > dh2
+            float dBottomDepth = dh3 - dl3
+            float dBottomTarget = dh3 + dBottomDepth
+            float dBottomInvalid = dl3 - tolerance
+            if diamondBottomValid and dBottomDepth >= atr * chartPatternMinDepthAtr and dBottomTarget > dh3 and dBottomInvalid > syminfo.mintick
+                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, array.get(pivotBars, d0 + 8), dBottomTarget, zoneWidth, dh3, dBottomInvalid, 1, "다이아몬드 바닥", projectionBars, maxPatternBoxes)
+                madePattern := true
+                patternCandidateNow := true
+
+    // Cup and handle: left rim, rounded cup low, similar right rim, shallow handle.
+    if enableCupHandlePattern and n >= 4 and not madePattern
+        int c0 = n - 4
+        bool cupSequence = array.get(pivotTypes, c0) == 1 and array.get(pivotTypes, c0 + 1) == -1 and array.get(pivotTypes, c0 + 2) == 1 and array.get(pivotTypes, c0 + 3) == -1
+        if cupSequence
+            float cupLeftRim = array.get(pivotPrices, c0)
+            float cupBottom = array.get(pivotPrices, c0 + 1)
+            float cupRightRim = array.get(pivotPrices, c0 + 2)
+            float handleLow = array.get(pivotPrices, c0 + 3)
+            float cupRim = (cupLeftRim + cupRightRim) / 2.0
+            float cupDepth = math.min(cupLeftRim, cupRightRim) - cupBottom
+            bool cupRimsMatch = math.abs(cupLeftRim - cupRightRim) <= atr * chartPatternRimToleranceAtr
+            bool cupDeepEnough = cupDepth >= atr * chartPatternMinDepthAtr
+            bool handleIsShallow = handleLow > cupBottom + cupDepth * 0.50 and handleLow < cupRightRim - atr * chartPatternExpansionAtr
+            float cupTarget = cupRim + cupDepth
+            float cupInvalidation = handleLow - tolerance
+            if cupRimsMatch and cupDeepEnough and handleIsShallow and cupTarget > cupRim and cupInvalidation > syminfo.mintick
+                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, array.get(pivotBars, c0 + 3), cupTarget, zoneWidth, cupRim, cupInvalidation, 1, "컵앤핸들", projectionBars, maxPatternBoxes)
+                madePattern := true
+                patternCandidateNow := true
+
+    // Rounded bottom: near-equal rims with progressively descending and recovering swing structure.
+    if enableRoundingPatterns and n >= 7 and not madePattern
+        int r0 = n - 7
+        bool roundBottomSequence = array.get(pivotTypes, r0) == 1 and array.get(pivotTypes, r0 + 1) == -1 and array.get(pivotTypes, r0 + 2) == 1 and array.get(pivotTypes, r0 + 3) == -1 and array.get(pivotTypes, r0 + 4) == 1 and array.get(pivotTypes, r0 + 5) == -1 and array.get(pivotTypes, r0 + 6) == 1
+        if roundBottomSequence
+            float roundLeftRim = array.get(pivotPrices, r0)
+            float roundLeftTrough = array.get(pivotPrices, r0 + 1)
+            float roundLeftShoulder = array.get(pivotPrices, r0 + 2)
+            float roundCenterLow = array.get(pivotPrices, r0 + 3)
+            float roundRightShoulder = array.get(pivotPrices, r0 + 4)
+            float roundRightTrough = array.get(pivotPrices, r0 + 5)
+            float roundRightRim = array.get(pivotPrices, r0 + 6)
+            float roundRim = (roundLeftRim + roundRightRim) / 2.0
+            float roundDepth = roundRim - roundCenterLow
+            bool roundRimsMatch = math.abs(roundLeftRim - roundRightRim) <= atr * chartPatternRimToleranceAtr
+            bool roundCupShape = roundCenterLow < roundLeftTrough - atr * chartPatternExpansionAtr and roundCenterLow < roundRightTrough - atr * chartPatternExpansionAtr and roundLeftShoulder < roundLeftRim and roundRightShoulder < roundRightRim and roundRightShoulder > roundLeftShoulder - tolerance
+            float roundTarget = roundRim + roundDepth
+            float roundInvalidation = roundCenterLow - tolerance
+            if roundRimsMatch and roundCupShape and roundDepth >= atr * chartPatternMinDepthAtr and roundTarget > roundRim and roundInvalidation > syminfo.mintick
+                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, array.get(pivotBars, r0 + 6), roundTarget, zoneWidth, roundRim, roundInvalidation, 1, "라운딩 바텀", projectionBars, maxPatternBoxes)
+                madePattern := true
+                patternCandidateNow := true
+
+    // Rounded top: near-equal supports and a central rounded peak.
+    if enableRoundingPatterns and n >= 7 and not madePattern
+        int r0 = n - 7
+        bool roundTopSequence = array.get(pivotTypes, r0) == -1 and array.get(pivotTypes, r0 + 1) == 1 and array.get(pivotTypes, r0 + 2) == -1 and array.get(pivotTypes, r0 + 3) == 1 and array.get(pivotTypes, r0 + 4) == -1 and array.get(pivotTypes, r0 + 5) == 1 and array.get(pivotTypes, r0 + 6) == -1
+        if roundTopSequence
+            float roundLeftSupport = array.get(pivotPrices, r0)
+            float roundLeftPeak = array.get(pivotPrices, r0 + 1)
+            float roundLeftShelf = array.get(pivotPrices, r0 + 2)
+            float roundCenterHigh = array.get(pivotPrices, r0 + 3)
+            float roundRightShelf = array.get(pivotPrices, r0 + 4)
+            float roundRightPeak = array.get(pivotPrices, r0 + 5)
+            float roundRightSupport = array.get(pivotPrices, r0 + 6)
+            float roundSupport = (roundLeftSupport + roundRightSupport) / 2.0
+            float roundDepth = roundCenterHigh - roundSupport
+            bool roundSupportsMatch = math.abs(roundLeftSupport - roundRightSupport) <= atr * chartPatternRimToleranceAtr
+            bool roundTopShape = roundCenterHigh > roundLeftPeak + atr * chartPatternExpansionAtr and roundCenterHigh > roundRightPeak + atr * chartPatternExpansionAtr and roundLeftShelf > roundLeftSupport and roundRightShelf > roundRightSupport and roundRightPeak < roundLeftPeak + tolerance
+            float roundTarget = roundSupport - roundDepth
+            float roundInvalidation = roundCenterHigh + tolerance
+            if roundSupportsMatch and roundTopShape and roundDepth >= atr * chartPatternMinDepthAtr and roundTarget > syminfo.mintick
+                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, array.get(pivotBars, r0 + 6), roundTarget, zoneWidth, roundSupport, roundInvalidation, -1, "라운딩 탑", projectionBars, maxPatternBoxes)
+                madePattern := true
+                patternCandidateNow := true
+
+    // Broadening tops/bottoms: successive highs and lows expand away from each other.
+    if enableBroadeningPatterns and n >= 5 and not madePattern
+        int b0 = n - 5
+        bool broadeningTopSequence = array.get(pivotTypes, b0) == 1 and array.get(pivotTypes, b0 + 1) == -1 and array.get(pivotTypes, b0 + 2) == 1 and array.get(pivotTypes, b0 + 3) == -1 and array.get(pivotTypes, b0 + 4) == 1
+        if broadeningTopSequence
+            float broadHigh1 = array.get(pivotPrices, b0)
+            float broadLow1 = array.get(pivotPrices, b0 + 1)
+            float broadHigh2 = array.get(pivotPrices, b0 + 2)
+            float broadLow2 = array.get(pivotPrices, b0 + 3)
+            float broadHigh3 = array.get(pivotPrices, b0 + 4)
+            bool broadeningTopValid = broadHigh2 > broadHigh1 + atr * chartPatternExpansionAtr and broadHigh3 > broadHigh2 + atr * chartPatternExpansionAtr and broadLow2 < broadLow1 - atr * chartPatternExpansionAtr
+            float broadTopTarget = broadLow2 - (broadHigh3 - broadLow2)
+            float broadTopInvalid = broadHigh3 + tolerance
+            if broadeningTopValid and broadTopTarget > syminfo.mintick
+                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, array.get(pivotBars, b0 + 4), broadTopTarget, zoneWidth, broadLow2, broadTopInvalid, -1, "확장형 천장", projectionBars, maxPatternBoxes)
+                madePattern := true
+                patternCandidateNow := true
+
+    if enableBroadeningPatterns and n >= 5 and not madePattern
+        int b0 = n - 5
+        bool broadeningBottomSequence = array.get(pivotTypes, b0) == -1 and array.get(pivotTypes, b0 + 1) == 1 and array.get(pivotTypes, b0 + 2) == -1 and array.get(pivotTypes, b0 + 3) == 1 and array.get(pivotTypes, b0 + 4) == -1
+        if broadeningBottomSequence
+            float broadLow1 = array.get(pivotPrices, b0)
+            float broadHigh1 = array.get(pivotPrices, b0 + 1)
+            float broadLow2 = array.get(pivotPrices, b0 + 2)
+            float broadHigh2 = array.get(pivotPrices, b0 + 3)
+            float broadLow3 = array.get(pivotPrices, b0 + 4)
+            bool broadeningBottomValid = broadLow2 < broadLow1 - atr * chartPatternExpansionAtr and broadLow3 < broadLow2 - atr * chartPatternExpansionAtr and broadHigh2 > broadHigh1 + atr * chartPatternExpansionAtr
+            float broadBottomTarget = broadHigh2 + (broadHigh2 - broadLow3)
+            float broadBottomInvalid = broadLow3 - tolerance
+            if broadeningBottomValid and broadBottomTarget > broadHigh2 and broadBottomInvalid > syminfo.mintick
+                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, array.get(pivotBars, b0 + 4), broadBottomTarget, zoneWidth, broadHigh2, broadBottomInvalid, 1, "확장형 바닥", projectionBars, maxPatternBoxes)
+                madePattern := true
+                patternCandidateNow := true
+
+    // Harmonic patterns: validate five alternating, confirmed X-A-B-C-D pivots.
+    // Fibonacci ratios are heuristic tolerances; the D zone is centered on the confirmed D pivot.
+    if enableHarmonic and n >= 5
+        int h0 = n - 5
+        int hDBar = array.get(pivotBars, n - 1)
+        bool hNewD = na(lastHarmonicPivotBar) or hDBar != lastHarmonicPivotBar
+        bool hBullSequence = array.get(pivotTypes, h0) == -1 and array.get(pivotTypes, h0 + 1) == 1 and array.get(pivotTypes, h0 + 2) == -1 and array.get(pivotTypes, h0 + 3) == 1 and array.get(pivotTypes, h0 + 4) == -1
+        bool hBearSequence = array.get(pivotTypes, h0) == 1 and array.get(pivotTypes, h0 + 1) == -1 and array.get(pivotTypes, h0 + 2) == 1 and array.get(pivotTypes, h0 + 3) == -1 and array.get(pivotTypes, h0 + 4) == 1
+        if hNewD and (hBullSequence or hBearSequence)
+            float hX = array.get(pivotPrices, h0)
+            float hA = array.get(pivotPrices, h0 + 1)
+            float hB = array.get(pivotPrices, h0 + 2)
+            float hC = array.get(pivotPrices, h0 + 3)
+            float hD = array.get(pivotPrices, h0 + 4)
+            float hXABar = math.abs(hA - hX)
+            float hAB = math.abs(hA - hB)
+            float hBC = math.abs(hC - hB)
+            float hCD = math.abs(hD - hC)
+            float hAD = math.abs(hD - hA)
+            float hXC = math.abs(hC - hX)
+            float hAB_XA = hAB / math.max(hXABar, syminfo.mintick)
+            float hBC_AB = hBC / math.max(hAB, syminfo.mintick)
+            float hBC_XA = hBC / math.max(hXABar, syminfo.mintick)
+            float hCD_BC = hCD / math.max(hBC, syminfo.mintick)
+            float hCD_AB = hCD / math.max(hAB, syminfo.mintick)
+            float hCD_XC = hCD / math.max(hXC, syminfo.mintick)
+            float hAD_XA = hAD / math.max(hXABar, syminfo.mintick)
+            float hXD_XA = math.abs(hD - hX) / math.max(hXABar, syminfo.mintick)
+            bool hLegsValid = hXABar >= atr * 0.25 and hAB >= atr * 0.15 and hBC >= atr * 0.15 and hCD >= atr * 0.15
+            bool hShapeValid = hBullSequence ? (hX < hB and hB < hA and hB < hC and hC < hA and hD < hC) : (hX > hB and hB > hA and hB > hC and hC > hA and hD > hC)
+            float hTol = harmonicRatioTolerance
+            bool hCValid = hBC_AB >= 0.382 - hTol and hBC_AB <= 0.886 + hTol
+            bool hStandardValid = hCValid and hShapeValid
+            bool hBullCypherShape = hX < hB and hB < hA and hC > hA and hD < hC and hD > hX
+            bool hBearCypherShape = hX > hB and hB > hA and hC < hA and hD > hC and hD < hX
+            bool hCypherShape = hBullSequence ? hBullCypherShape : hBearCypherShape
+            bool hBullSharkShape = hB < hX and hC > hA and hD < hX and hD < hC
+            bool hBearSharkShape = hB > hX and hC < hA and hD > hX and hD > hC
+            bool hSharkShape = hBullSequence ? hBullSharkShape : hBearSharkShape
+            string hPattern = ""
+            if hLegsValid
+                bool hCrab = hStandardValid and hAB_XA >= 0.382 - hTol and hAB_XA <= 0.618 + hTol and math.abs(hAD_XA - 1.618) <= hTol and hCD_BC >= 2.24 - hTol and hCD_BC <= 3.618 + hTol
+                bool hButterfly = hStandardValid and math.abs(hAB_XA - 0.786) <= hTol and hAD_XA >= 1.27 - hTol and hAD_XA <= 1.618 + hTol and hCD_BC >= 1.618 - hTol and hCD_BC <= 2.618 + hTol
+                bool hGartley = hStandardValid and math.abs(hAB_XA - 0.618) <= hTol and math.abs(hAD_XA - 0.786) <= hTol and hCD_BC >= 1.13 - hTol and hCD_BC <= 1.618 + hTol
+                bool hBat = hStandardValid and hAB_XA >= 0.382 - hTol and hAB_XA <= 0.500 + hTol and math.abs(hAD_XA - 0.886) <= hTol and hCD_BC >= 1.618 - hTol and hCD_BC <= 2.618 + hTol
+                bool hCypher = enableCypher and hCypherShape and hAB_XA >= 0.382 - hTol and hAB_XA <= 0.618 + hTol and hBC_XA >= 1.272 - hTol and hBC_XA <= 1.414 + hTol and math.abs(hCD_XC - 0.786) <= hTol
+                bool hShark = enableShark and hSharkShape and hAB_XA >= 1.13 - hTol and hAB_XA <= 1.618 + hTol and hBC_AB >= 1.618 - hTol and hBC_AB <= 2.24 + hTol and hXD_XA >= 0.886 - hTol and hXD_XA <= 1.13 + hTol
+                bool hABCD = hStandardValid and hCD_BC >= 1.13 - hTol and hCD_BC <= 2.618 + hTol and math.abs(hCD_AB - 1.0) <= harmonicABCDTolerance and math.abs(hCD_AB - 1.0) <= math.abs(hCD_AB - 1.272) and math.abs(hCD_AB - 1.0) <= math.abs(hCD_AB - 1.618)
+                bool hABCD1272 = enableABCDVariants and hStandardValid and hCD_BC >= 1.13 - hTol and hCD_BC <= 2.618 + hTol and math.abs(hCD_AB - 1.272) <= harmonicABCDTolerance and math.abs(hCD_AB - 1.272) < math.abs(hCD_AB - 1.0) and math.abs(hCD_AB - 1.272) <= math.abs(hCD_AB - 1.618)
+                bool hABCD1618 = enableABCDVariants and hStandardValid and hCD_BC >= 1.13 - hTol and hCD_BC <= 2.618 + hTol and math.abs(hCD_AB - 1.618) <= harmonicABCDTolerance and math.abs(hCD_AB - 1.618) < math.abs(hCD_AB - 1.0) and math.abs(hCD_AB - 1.618) < math.abs(hCD_AB - 1.272)
+                hPattern := hCrab ? "크랩" : hButterfly ? "버터플라이" : hGartley ? "가틀리" : hBat ? "배트" : hCypher ? "사이퍼" : hShark ? "샤크" : hABCD1272 ? "AB=CD 1.272 변형" : hABCD1618 ? "AB=CD 1.618 변형" : hABCD ? "AB=CD" : ""
+            if hPattern != "" and f_qualityPass(hBullSequence ? 1 : -1)
+                bool hBullish = hBullSequence
+                color hColor = hBullish ? color.lime : color.red
+                string hDirectionName = hBullish ? "상승 " : "하락 "
+                float hPRZWidth = math.max(atr * harmonicPRZAtr, syminfo.mintick * 2.0)
+                float hTop = hD + hPRZWidth
+                float hBottom = math.max(syminfo.mintick, hD - hPRZWidth)
+                box hBox = box.new(left=hDBar, top=hTop, right=bar_index + projectionBars, bottom=hBottom, border_color=hColor, border_width=2, bgcolor=color.new(hColor, 82), text=hDirectionName + hPattern + " | 완성 PRZ", text_color=color.white, text_size=size.small)
+                array.push(harmonicBoxes, hBox)
+                lastHarmonicPivotBar := hDBar
+                harmonicDetectedNow := true
+                if array.size(harmonicBoxes) > maxHarmonicBoxes
+                    box hOldBox = array.shift(harmonicBoxes)
+                    box.delete(hOldBox)
+
+    // Detect five-pivot triangles and wedges using alternating confirmed swings.
+    if enableGeometry and n >= 5
+        int g0 = n - 5
+        int endPivotBar = array.get(pivotBars, n - 1)
+        bool notProcessed = na(lastGeometryPivotBar) or endPivotBar != lastGeometryPivotBar
+        bool highStart = array.get(pivotTypes, g0) == 1 and array.get(pivotTypes, g0 + 1) == -1 and array.get(pivotTypes, g0 + 2) == 1 and array.get(pivotTypes, g0 + 3) == -1 and array.get(pivotTypes, g0 + 4) == 1
+        bool lowStart = array.get(pivotTypes, g0) == -1 and array.get(pivotTypes, g0 + 1) == 1 and array.get(pivotTypes, g0 + 2) == -1 and array.get(pivotTypes, g0 + 3) == 1 and array.get(pivotTypes, g0 + 4) == -1
+        if notProcessed and (highStart or lowStart)
+            float shapeUpper = na
+            float shapeLower = na
+            float upperAnchor = na
+            float lowerAnchor = na
+            int upperAnchorBar = na
+            int lowerAnchorBar = na
+            float upperSlope = na
+            float lowerSlope = na
+            string shapeName = ""
+            if highStart
+                float h1 = array.get(pivotPrices, g0)
+                float l1 = array.get(pivotPrices, g0 + 1)
+                float h2 = array.get(pivotPrices, g0 + 2)
+                float l2 = array.get(pivotPrices, g0 + 3)
+                float h3 = array.get(pivotPrices, g0 + 4)
+                int bh1 = array.get(pivotBars, g0)
+                int bl1 = array.get(pivotBars, g0 + 1)
+                int bh2 = array.get(pivotBars, g0 + 2)
+                int bl2 = array.get(pivotBars, g0 + 3)
+                int bh3 = array.get(pivotBars, g0 + 4)
+                float highMove = h3 - h1
+                float lowMove = l2 - l1
+                upperSlope := (h3 - h2) / math.max(bh3 - bh2, 1)
+                lowerSlope := (l2 - l1) / math.max(bl2 - bl1, 1)
+                bool highsFlat = math.max(h1, math.max(h2, h3)) - math.min(h1, math.min(h2, h3)) <= atr * flatBoundaryAtr
+                bool lowsFlat = math.abs(l2 - l1) <= atr * flatBoundaryAtr
+                float priorLegMove = g0 > 0 ? array.get(pivotPrices, g0) - array.get(pivotPrices, g0 - 1) : 0.0
+                bool topsAndBottomsFlat = highsFlat and lowsFlat and math.abs(h1 - l1) >= atr * minGeometryMoveAtr
+                bool parallelLines = math.abs(upperSlope - lowerSlope) <= atr * flatBoundaryAtr / math.max(bh3 - bl1, 1)
+                if enableContinuation and topsAndBottomsFlat
+                    shapeName := "직사각형 박스권"
+                else if highsFlat and lowMove >= atr * minGeometryMoveAtr
+                    shapeName := "상승 삼각형"
+                else if lowsFlat and highMove <= -atr * minGeometryMoveAtr
+                    shapeName := "하락 삼각형"
+                else if enableContinuation and highMove <= -atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and priorLegMove >= atr * impulseThresholdAtr
+                    shapeName := "상승 페넌트"
+                else if highMove <= -atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr
+                    shapeName := "대칭 삼각형"
+                else if enableContinuation and highMove <= -atr * minGeometryMoveAtr and lowMove <= -atr * minGeometryMoveAtr and parallelLines and priorLegMove >= atr * impulseThresholdAtr
+                    shapeName := "상승 깃발"
+                else if enableContinuation and highMove >= atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and parallelLines
+                    shapeName := "상승 채널"
+                else if enableContinuation and highMove <= -atr * minGeometryMoveAtr and lowMove <= -atr * minGeometryMoveAtr and parallelLines
+                    shapeName := "하락 채널"
+                else if highMove >= atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and lowerSlope > upperSlope
+                    shapeName := "상승 쐐기형"
+                else if highMove <= -atr * minGeometryMoveAtr and lowMove <= -atr * minGeometryMoveAtr and upperSlope > lowerSlope
+                    shapeName := "하락 쐐기형"
+                shapeUpper := math.max(h1, math.max(h2, h3))
+                shapeLower := math.min(l1, l2)
+                upperAnchor := h3
+                upperAnchorBar := bh3
+                lowerAnchor := l2
+                lowerAnchorBar := bl2
+                if shapeName == "직사각형 박스권"
+                    upperSlope := 0.0
+                    lowerSlope := 0.0
+                    upperAnchor := shapeUpper
+                    upperAnchorBar := endPivotBar
+                    lowerAnchor := shapeLower
+                    lowerAnchorBar := endPivotBar
+            else if lowStart
+                float l1 = array.get(pivotPrices, g0)
+                float h1 = array.get(pivotPrices, g0 + 1)
+                float l2 = array.get(pivotPrices, g0 + 2)
+                float h2 = array.get(pivotPrices, g0 + 3)
+                float l3 = array.get(pivotPrices, g0 + 4)
+                int bl1 = array.get(pivotBars, g0)
+                int bh1 = array.get(pivotBars, g0 + 1)
+                int bl2 = array.get(pivotBars, g0 + 2)
+                int bh2 = array.get(pivotBars, g0 + 3)
+                int bl3 = array.get(pivotBars, g0 + 4)
+                float highMove = h2 - h1
+                float lowMove = l3 - l1
+                upperSlope := (h2 - h1) / math.max(bh2 - bh1, 1)
+                lowerSlope := (l3 - l2) / math.max(bl3 - bl2, 1)
+                bool highsFlat = math.abs(h2 - h1) <= atr * flatBoundaryAtr
+                bool lowsFlat = math.max(l1, math.max(l2, l3)) - math.min(l1, math.min(l2, l3)) <= atr * flatBoundaryAtr
+                float priorLegMove = g0 > 0 ? array.get(pivotPrices, g0) - array.get(pivotPrices, g0 - 1) : 0.0
+                bool topsAndBottomsFlat = highsFlat and lowsFlat and math.abs(h1 - l1) >= atr * minGeometryMoveAtr
+                bool parallelLines = math.abs(upperSlope - lowerSlope) <= atr * flatBoundaryAtr / math.max(bh2 - bl1, 1)
+                if enableContinuation and topsAndBottomsFlat
+                    shapeName := "직사각형 박스권"
+                else if highsFlat and lowMove >= atr * minGeometryMoveAtr
+                    shapeName := "상승 삼각형"
+                else if lowsFlat and highMove <= -atr * minGeometryMoveAtr
+                    shapeName := "하락 삼각형"
+                else if enableContinuation and highMove <= -atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and priorLegMove <= -atr * impulseThresholdAtr
+                    shapeName := "하락 페넌트"
+                else if highMove <= -atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr
+                    shapeName := "대칭 삼각형"
+                else if enableContinuation and highMove >= atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and parallelLines and priorLegMove <= -atr * impulseThresholdAtr
+                    shapeName := "하락 깃발"
+                else if enableContinuation and highMove >= atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and parallelLines
+                    shapeName := "상승 채널"
+                else if enableContinuation and highMove <= -atr * minGeometryMoveAtr and lowMove <= -atr * minGeometryMoveAtr and parallelLines
+                    shapeName := "하락 채널"
+                else if highMove >= atr * minGeometryMoveAtr and lowMove >= atr * minGeometryMoveAtr and upperSlope > lowerSlope
+                    shapeName := "상승 쐐기형"
+                else if highMove <= -atr * minGeometryMoveAtr and lowMove <= -atr * minGeometryMoveAtr and lowerSlope > upperSlope
+                    shapeName := "하락 쐐기형"
+                shapeUpper := math.max(h1, h2)
+                shapeLower := math.min(l1, math.min(l2, l3))
+                upperAnchor := h2
+                upperAnchorBar := bh2
+                lowerAnchor := l3
+                lowerAnchorBar := bl3
+                if shapeName == "직사각형 박스권"
+                    upperSlope := 0.0
+                    lowerSlope := 0.0
+                    upperAnchor := shapeUpper
+                    upperAnchorBar := endPivotBar
+                    lowerAnchor := shapeLower
+                    lowerAnchorBar := endPivotBar
+            bool validShape = shapeName != "" and not na(shapeUpper) and not na(shapeLower) and shapeUpper > shapeLower and not na(upperSlope) and not na(lowerSlope)
+            if validShape and f_qualityPass(0)
+                box geomBox = box.new(left=array.get(pivotBars, g0), top=shapeUpper, right=bar_index + projectionBars, bottom=shapeLower, border_color=color.orange, border_width=1, bgcolor=color.new(color.orange, 90), text=shapeName + " | 형성 중", text_color=color.white, text_size=size.small)
+                array.push(geometryBoxes, geomBox)
+                array.push(geometryUpperAnchors, upperAnchor)
+                array.push(geometryUpperAnchorBars, upperAnchorBar)
+                array.push(geometryUpperSlopes, upperSlope)
+                array.push(geometryLowerAnchors, lowerAnchor)
+                array.push(geometryLowerAnchorBars, lowerAnchorBar)
+                array.push(geometryLowerSlopes, lowerSlope)
+                array.push(geometryHeights, shapeUpper - shapeLower)
+                array.push(geometryStates, 0)
+                array.push(geometryNames, shapeName)
+                lastGeometryPivotBar := endPivotBar
+                geometryCandidateNow := true
+                if array.size(geometryBoxes) > maxGeometryBoxes
+                    box oldGeometryBox = array.shift(geometryBoxes)
+                    box.delete(oldGeometryBox)
+                    array.shift(geometryUpperAnchors)
+                    array.shift(geometryUpperAnchorBars)
+                    array.shift(geometryUpperSlopes)
+                    array.shift(geometryLowerAnchors)
+                    array.shift(geometryLowerAnchorBars)
+                    array.shift(geometryLowerSlopes)
+                    array.shift(geometryHeights)
+                    array.shift(geometryStates)
+                    array.shift(geometryNames)
+
+// Detect three-candle Fair Value Gaps on confirmed bars.
+// Bullish: current low is above high[2]. Bearish: current high is below low[2].
+// These are imbalance zones, not automatic buy/sell signals.
+if enableFVG and barstate.isconfirmed and not na(atr) and atr > 0 and bar_index >= 2
+    bool _bullFvg = low > high[2] and (low - high[2]) >= atr * minFvgAtr and f_qualityPass(1)
+    bool _bearFvg = high < low[2] and (low[2] - high) >= atr * minFvgAtr and f_qualityPass(-1)
+    if _bullFvg
+        float _top = low
+        float _bottom = high[2]
+        box _newFvg = box.new(left=bar_index - 2, top=_top, right=bar_index + projectionBars, bottom=_bottom, border_color=color.teal, border_width=1, bgcolor=color.new(color.teal, 87), text="상승 불균형(FVG)", text_color=color.white, text_size=size.small)
+        array.push(fvgBoxes, _newFvg)
+        array.push(fvgTops, _top)
+        array.push(fvgBottoms, _bottom)
+        array.push(fvgDirections, 1)
+        array.push(fvgStates, 0)
+        array.push(fvgCreatedBars, bar_index)
+        fvgDetectedNow := true
+    else if _bearFvg
+        float _top = low[2]
+        float _bottom = high
+        box _newFvg = box.new(left=bar_index - 2, top=_top, right=bar_index + projectionBars, bottom=_bottom, border_color=color.purple, border_width=1, bgcolor=color.new(color.purple, 87), text="하락 불균형(FVG)", text_color=color.white, text_size=size.small)
+        array.push(fvgBoxes, _newFvg)
+        array.push(fvgTops, _top)
+        array.push(fvgBottoms, _bottom)
+        array.push(fvgDirections, -1)
+        array.push(fvgStates, 0)
+        array.push(fvgCreatedBars, bar_index)
+        fvgDetectedNow := true
+    if array.size(fvgBoxes) > maxFvgBoxes
+        box _oldFvg = array.shift(fvgBoxes)
+        box.delete(_oldFvg)
+        array.shift(fvgTops)
+        array.shift(fvgBottoms)
+        array.shift(fvgDirections)
+        array.shift(fvgStates)
+        array.shift(fvgCreatedBars)
+
+// Detect overlapping same-direction order blocks and FVGs.
+// A confluence is only created after both source zones exist; EQH/EQL proximity
+// is a contextual tag, not a separate buy/sell instruction.
+if enableObFvgConfluence and barstate.isconfirmed and not na(atr) and atr > 0 and (orderBlockDetectedNow or fvgDetectedNow)
+    int _obCountForConfluence = array.size(orderBlockBoxes)
+    int _fvgCountForConfluence = array.size(fvgBoxes)
+    if _obCountForConfluence > 0 and _fvgCountForConfluence > 0
+        for oi = 0 to _obCountForConfluence - 1
+            int _obStateForConfluence = array.get(orderBlockStates, oi)
+            int _obDirectionForConfluence = array.get(orderBlockDirections, oi)
+            if _obStateForConfluence >= 0
+                for fi = 0 to _fvgCountForConfluence - 1
+                    int _fvgStateForConfluence = array.get(fvgStates, fi)
+                    int _fvgDirectionForConfluence = array.get(fvgDirections, fi)
+                    if _fvgStateForConfluence < 2 and _obDirectionForConfluence == _fvgDirectionForConfluence and (array.get(orderBlockCreatedBars, oi) == bar_index or array.get(fvgCreatedBars, fi) == bar_index)
+                        int _obKeyForConfluence = array.get(orderBlockCreatedBars, oi)
+                        int _fvgKeyForConfluence = array.get(fvgCreatedBars, fi)
+                        bool _confluencePairExists = false
+                        if array.size(confluenceBoxes) > 0
+                            for ci = 0 to array.size(confluenceBoxes) - 1
+                                if array.get(confluenceObCreatedBars, ci) == _obKeyForConfluence and array.get(confluenceFvgCreatedBars, ci) == _fvgKeyForConfluence
+                                    _confluencePairExists := true
+                        if not _confluencePairExists
+                            float _overlapTop = math.min(array.get(orderBlockTops, oi), array.get(fvgTops, fi))
+                            float _overlapBottom = math.max(array.get(orderBlockBottoms, oi), array.get(fvgBottoms, fi))
+                            if _overlapTop > _overlapBottom
+                                bool _nearLiquidityPool = false
+                                float _liqTolerance = atr * confluenceLiquidityTolAtr
+                                if array.size(equalPoolBoxes) > 0
+                                    for li = 0 to array.size(equalPoolBoxes) - 1
+                                        int _liqState = array.get(equalPoolStates, li)
+                                        int _liqDirection = array.get(equalPoolDirections, li)
+                                        float _liqPrice = array.get(equalPoolPrices, li)
+                                        bool _isRelevantLiquidity = _obDirectionForConfluence == 1 ? _liqDirection == -1 : _liqDirection == 1
+                                        float _distanceToOverlap = _liqPrice > _overlapTop ? _liqPrice - _overlapTop : _liqPrice < _overlapBottom ? _overlapBottom - _liqPrice : 0.0
+                                        if _liqState == 0 and _isRelevantLiquidity and _distanceToOverlap <= _liqTolerance
+                                            _nearLiquidityPool := true
+                                string _confluenceName = _obDirectionForConfluence == 1 ? "상승 OB+FVG 컨플루언스" : "하락 OB+FVG 컨플루언스"
+                                if _nearLiquidityPool
+                                    _confluenceName += _obDirectionForConfluence == 1 ? " | EQL 인접" : " | EQH 인접"
+                                bool _overlapNearHTFHigh = htfContextActive and not na(htfRangeHigh) and _overlapTop >= htfRangeHigh - htfLiquidityBuffer and _overlapBottom <= htfRangeHigh + htfLiquidityBuffer
+                                bool _overlapNearHTFLow = htfContextActive and not na(htfRangeLow) and _overlapTop >= htfRangeLow - htfLiquidityBuffer and _overlapBottom <= htfRangeLow + htfLiquidityBuffer
+                                if _overlapNearHTFHigh
+                                    _confluenceName += " | HTF 상단 인접"
+                                if _overlapNearHTFLow
+                                    _confluenceName += " | HTF 하단 인접"
+                                color _confluenceColor = _obDirectionForConfluence == 1 ? color.lime : color.fuchsia
+                                box _newConfluenceBox = box.new(left=bar_index, top=_overlapTop, right=bar_index + projectionBars, bottom=_overlapBottom, border_color=_confluenceColor, border_width=2, bgcolor=color.new(_confluenceColor, 82), text=_confluenceName, text_color=color.white, text_size=size.small)
+                                array.push(confluenceBoxes, _newConfluenceBox)
+                                array.push(confluenceObCreatedBars, _obKeyForConfluence)
+                                array.push(confluenceFvgCreatedBars, _fvgKeyForConfluence)
+                                array.push(confluenceDirections, _obDirectionForConfluence)
+                                array.push(confluenceStates, 0)
+                                obFvgConfluenceDetectedNow := true
+                                if array.size(confluenceBoxes) > maxConfluenceBoxes
+                                    box _oldConfluenceBox = array.shift(confluenceBoxes)
+                                    box.delete(_oldConfluenceBox)
+                                    array.shift(confluenceObCreatedBars)
+                                    array.shift(confluenceFvgCreatedBars)
+                                    array.shift(confluenceDirections)
+                                    array.shift(confluenceStates)
+
+// Keep a confluence active while both source zones remain usable.
+// Re-scan source keys only when an OB/FVG is added, invalidated, or fully filled.
+bool _recheckConfluenceSources = orderBlockDetectedNow or fvgDetectedNow or orderBlockInvalidatedNow or fvgMitigatedNow
+if array.size(confluenceBoxes) > 0
+    for ci = 0 to array.size(confluenceBoxes) - 1
+        if array.get(confluenceStates, ci) == 0
+            box _trackedConfluenceBox = array.get(confluenceBoxes, ci)
+            if _recheckConfluenceSources
+                int _obKeyToTrack = array.get(confluenceObCreatedBars, ci)
+                int _fvgKeyToTrack = array.get(confluenceFvgCreatedBars, ci)
+                bool _trackedObActive = false
+                bool _trackedFvgActive = false
+                if array.size(orderBlockBoxes) > 0
+                    for oi = 0 to array.size(orderBlockBoxes) - 1
+                        if array.get(orderBlockCreatedBars, oi) == _obKeyToTrack and array.get(orderBlockStates, oi) >= 0
+                            _trackedObActive := true
+                if array.size(fvgBoxes) > 0
+                    for fi = 0 to array.size(fvgBoxes) - 1
+                        if array.get(fvgCreatedBars, fi) == _fvgKeyToTrack and array.get(fvgStates, fi) < 2
+                            _trackedFvgActive := true
+                if _trackedObActive and _trackedFvgActive
+                    box.set_right(_trackedConfluenceBox, bar_index + projectionBars)
+                else
+                    array.set(confluenceStates, ci, 1)
+                    box.set_right(_trackedConfluenceBox, bar_index)
+                    box.set_border_color(_trackedConfluenceBox, color.gray)
+                    box.set_bgcolor(_trackedConfluenceBox, color.new(color.gray, 88))
+                    box.set_text(_trackedConfluenceBox, array.get(confluenceDirections, ci) == 1 ? "상승 OB+FVG 컨플루언스 | 종료" : "하락 OB+FVG 컨플루언스 | 종료")
+            else
+                box.set_right(_trackedConfluenceBox, bar_index + projectionBars)
+
+// Candlestick patterns are detected only after the signal candle closes.
+// Targets use a configurable ATR distance; invalidation uses the signal candle extreme.
+if enableCandles and barstate.isconfirmed and not na(atr) and atr > 0 and bar_index >= 1
+    float _body = math.abs(close - open)
+    float _prevBody = math.abs(close[1] - open[1])
+    float _bodyFloor = math.max(_body, syminfo.mintick)
+    float _upperWick = high - math.max(open, close)
+    float _lowerWick = math.min(open, close) - low
+    float _candleRange = math.max(high - low, syminfo.mintick)
+    bool _bullEngulf = close > open and close[1] < open[1] and open <= close[1] and close >= open[1] and _body >= atr * minCandleBodyAtr and _body >= _prevBody
+    bool _bearEngulf = close < open and close[1] > open[1] and open >= close[1] and close <= open[1] and _body >= atr * minCandleBodyAtr and _body >= _prevBody
+    bool _bullPin = close > open and _lowerWick >= _bodyFloor * candleWickRatio and _upperWick <= _bodyFloor and _body >= atr * minCandleBodyAtr
+    bool _bearPin = close < open and _upperWick >= _bodyFloor * candleWickRatio and _lowerWick <= _bodyFloor and _body >= atr * minCandleBodyAtr
+
+    // Three-candle star patterns: the middle candle is small relative to the first,
+    // and the final candle closes back through the first candle's body midpoint.
+    bool _hasThreeBars = bar_index >= 2
+    float _firstBody = math.abs(close[2] - open[2])
+    float _middleBody = math.abs(close[1] - open[1])
+    float _firstMidpoint = (open[2] + close[2]) / 2.0
+    bool _bullMorningStar = enableCandleExpansion and _hasThreeBars and close[2] < open[2] and _firstBody >= atr * minCandleBodyAtr and _middleBody <= _firstBody * candleStarBodyRatio and close > open and close >= _firstMidpoint and _body >= atr * minCandleBodyAtr
+    bool _bearEveningStar = enableCandleExpansion and _hasThreeBars and close[2] > open[2] and _firstBody >= atr * minCandleBodyAtr and _middleBody <= _firstBody * candleStarBodyRatio and close < open and close <= _firstMidpoint and _body >= atr * minCandleBodyAtr
+
+    // Hammer and shooting-star candidates additionally require a simple prior
+    // directional context; this reduces overlap with generic pinbar signals.
+    bool _hasFourBars = bar_index >= 3
+    bool _priorDownMove = _hasFourBars and close[1] < close[2] and close[2] < close[3]
+    bool _priorUpMove = _hasFourBars and close[1] > close[2] and close[2] > close[3]
+    bool _bodyNearTop = math.min(open, close) >= low + _candleRange * 0.60
+    bool _bodyNearBottom = math.max(open, close) <= high - _candleRange * 0.60
+    bool _bullHammer = enableCandleExpansion and _priorDownMove and _bodyNearTop and _lowerWick >= _bodyFloor * candleWickRatio and _upperWick <= _bodyFloor and _body >= atr * minCandleBodyAtr
+    bool _bearShootingStar = enableCandleExpansion and _priorUpMove and _bodyNearBottom and _upperWick >= _bodyFloor * candleWickRatio and _lowerWick <= _bodyFloor and _body >= atr * minCandleBodyAtr
+
+    // Three white soldiers / three black crows: consecutive directional bodies,
+    // progressively higher/lower closes, and opens inside the previous real body.
+    float _body1 = math.abs(close[1] - open[1])
+    float _body2 = math.abs(close[2] - open[2])
+    float _range1 = math.max(high[1] - low[1], syminfo.mintick)
+    float _range2 = math.max(high[2] - low[2], syminfo.mintick)
+    bool _bullSoldierOpens = open[1] >= math.min(open[2], close[2]) and open[1] <= math.max(open[2], close[2]) and open >= math.min(open[1], close[1]) and open <= math.max(open[1], close[1])
+    bool _bearCrowOpens = open[1] >= math.min(open[2], close[2]) and open[1] <= math.max(open[2], close[2]) and open >= math.min(open[1], close[1]) and open <= math.max(open[1], close[1])
+    bool _bullSoldiers = enableCandleExpansion and _hasThreeBars and close[2] > open[2] and close[1] > open[1] and close > open and close[1] > close[2] and close > close[1] and _body2 >= atr * minCandleBodyAtr and _body1 >= atr * minCandleBodyAtr and _body >= atr * minCandleBodyAtr and _bullSoldierOpens and close[2] >= high[2] - _range2 * 0.30 and close[1] >= high[1] - _range1 * 0.30 and close >= high - _candleRange * 0.30
+    bool _bearCrows = enableCandleExpansion and _hasThreeBars and close[2] < open[2] and close[1] < open[1] and close < open and close[1] < close[2] and close < close[1] and _body2 >= atr * minCandleBodyAtr and _body1 >= atr * minCandleBodyAtr and _body >= atr * minCandleBodyAtr and _bearCrowOpens and close[2] <= low[2] + _range2 * 0.30 and close[1] <= low[1] + _range1 * 0.30 and close <= low + _candleRange * 0.30
+
+    // Advanced two-candle reversal formations.
+    float _prevMidpoint = (open[1] + close[1]) / 2.0
+    float _prevHighBody = math.max(open[1], close[1])
+    float _prevLowBody = math.min(open[1], close[1])
+    bool _bullHarami = enableCandleAdvanced and close[1] < open[1] and close > open and _prevBody >= atr * minCandleBodyAtr and _body <= _prevBody * candleHaramiBodyRatio and math.max(open, close) <= _prevHighBody and math.min(open, close) >= _prevLowBody
+    bool _bearHarami = enableCandleAdvanced and close[1] > open[1] and close < open and _prevBody >= atr * minCandleBodyAtr and _body <= _prevBody * candleHaramiBodyRatio and math.max(open, close) <= _prevHighBody and math.min(open, close) >= _prevLowBody
+    bool _bullPiercing = enableCandleAdvanced and close[1] < open[1] and close > open and _prevBody >= atr * minCandleBodyAtr and _body >= atr * minCandleBodyAtr and open <= close[1] and close > _prevMidpoint and close < open[1]
+    bool _bearDarkCloud = enableCandleAdvanced and close[1] > open[1] and close < open and _prevBody >= atr * minCandleBodyAtr and _body >= atr * minCandleBodyAtr and open >= close[1] and close < _prevMidpoint and close > open[1]
+
+    // Tweezers compare the adjacent swing extremes with an ATR/tick tolerance.
+    float _tweezerTolerance = math.max(atr * candleTweezersToleranceAtr, syminfo.mintick * 2.0)
+    bool _bullTweezersBottom = enableCandleAdvanced and close[1] < open[1] and close > open and math.abs(low - low[1]) <= _tweezerTolerance and _prevBody >= atr * minCandleBodyAtr and _body >= atr * minCandleBodyAtr
+    bool _bearTweezersTop = enableCandleAdvanced and close[1] > open[1] and close < open and math.abs(high - high[1]) <= _tweezerTolerance and _prevBody >= atr * minCandleBodyAtr and _body >= atr * minCandleBodyAtr
+
+    // Range-based patterns. A doji itself is indecisive; direction for the shared
+    // target-zone engine is inferred only as a display convention from recent bars.
+    bool _isDoji = enableCandleAdvanced and _candleRange >= atr * 0.15 and _body <= _candleRange * candleDojiBodyRatio
+    bool _insideBar = enableCandleAdvanced and high < high[1] and low > low[1]
+    bool _outsideBar = enableCandleAdvanced and high > high[1] and low < low[1]
+    bool _bullInsideBar = _insideBar and close >= open
+    bool _bearInsideBar = _insideBar and close < open
+    bool _bullOutsideBar = _outsideBar and close > open
+    bool _bearOutsideBar = _outsideBar and close < open
+    bool _bullLongCandle = enableCandleAdvanced and close > open and _body >= atr * candleLongBodyAtr and _body / _candleRange >= 0.70
+    bool _bearLongCandle = enableCandleAdvanced and close < open and _body >= atr * candleLongBodyAtr and _body / _candleRange >= 0.70
+    int _dojiDir = _priorDownMove ? 1 : _priorUpMove ? -1 : close >= close[1] ? 1 : -1
+
+    // Each signal candle stores one primary label; the most specific matching
+    // formation wins when several simpler patterns overlap on the same bar.
+    int _candleDir = _bullMorningStar or _bullPiercing or _bullTweezersBottom or _bullSoldiers or _bullHammer or _bullEngulf or _bullHarami or _bullPin or _bullLongCandle or _bullInsideBar or _bullOutsideBar ? 1 : _bearEveningStar or _bearDarkCloud or _bearTweezersTop or _bearCrows or _bearShootingStar or _bearEngulf or _bearHarami or _bearPin or _bearLongCandle or _bearInsideBar or _bearOutsideBar ? -1 : _isDoji ? _dojiDir : 0
+    string _candleName = _bullMorningStar ? "모닝스타" : _bearEveningStar ? "이브닝스타" : _bullPiercing ? "관통형" : _bearDarkCloud ? "먹구름형" : _bullTweezersBottom ? "집게형 저점" : _bearTweezersTop ? "집게형 고점" : _bullHammer ? "해머" : _bearShootingStar ? "슈팅스타" : _bullSoldiers ? "적삼병" : _bearCrows ? "흑삼병" : _bullEngulf ? "상승 장악형" : _bearEngulf ? "하락 장악형" : _bullHarami ? "상승 하라미" : _bearHarami ? "하락 하라미" : _bullPin ? "상승 핀바" : _bearPin ? "하락 핀바" : _bullLongCandle ? "장대양봉" : _bearLongCandle ? "장대음봉" : _bullInsideBar ? "상승 인사이드 바" : _bearInsideBar ? "하락 인사이드 바" : _bullOutsideBar ? "상승 아웃사이드 바" : _bearOutsideBar ? "하락 아웃사이드 바" : _isDoji ? "도지 | 방향 미확정" : ""
+    if _candleDir != 0 and f_qualityPass(_candleDir)
+        candleMorningStarNow := _bullMorningStar
+        candleEveningStarNow := _bearEveningStar
+        candleHammerNow := _bullHammer
+        candleShootingStarNow := _bearShootingStar
+        candleThreeSoldiersNow := _bullSoldiers
+        candleThreeCrowsNow := _bearCrows
+        float _zoneWidth = math.max(atr * zoneHalfWidthAtr, syminfo.mintick * 2.0)
+        float _target = _candleDir == 1 ? high + atr * candleTargetAtr : low - atr * candleTargetAtr
+        float _zoneTop = _target + _zoneWidth
+        float _zoneBottom = math.max(syminfo.mintick, _target - _zoneWidth)
+        float _invalidation = _candleDir == 1 ? low : high
+        color _candleColor = _candleDir == 1 ? color.lime : color.red
+        box _candleBox = box.new(left=bar_index, top=_zoneTop, right=bar_index + projectionBars, bottom=_zoneBottom, border_color=_candleColor, border_width=1, bgcolor=color.new(_candleColor, 88), text=_candleName + " | 목표 영역", text_color=color.white, text_size=size.small)
+        array.push(candleBoxes, _candleBox)
+        array.push(candleInvalidations, _invalidation)
+        array.push(candleDirections, _candleDir)
+        array.push(candleStates, 0)
+        array.push(candleNames, _candleName)
+        candleDetectedNow := true
+        if array.size(candleBoxes) > maxCandleZones
+            box _oldCandle = array.shift(candleBoxes)
+            box.delete(_oldCandle)
+            array.shift(candleInvalidations)
+            array.shift(candleDirections)
+            array.shift(candleStates)
+            array.shift(candleNames)
+
+// Track traditional price gaps between consecutive, non-overlapping candles.
+ // Unlike three-candle FVG, these gaps use the previous bar's high/low as the zone edge.
+ // A newly detected gap is not assessed for fill until the following bar.
+if array.size(priceGapBoxes) > 0
+    for i = 0 to array.size(priceGapBoxes) - 1
+        int _pgState = array.get(priceGapStates, i)
+        if _pgState < 2
+            box _pgBox = array.get(priceGapBoxes, i)
+            float _pgTop = array.get(priceGapTops, i)
+            float _pgBottom = array.get(priceGapBottoms, i)
+            int _pgDir = array.get(priceGapDirections, i)
+            int _pgCreatedBar = array.get(priceGapCreatedBars, i)
+            bool _pgFullyFilled = _pgDir == 1 ? low <= _pgBottom : high >= _pgTop
+            bool _pgPartiallyFilled = _pgDir == 1 ? low < _pgTop and low > _pgBottom : high > _pgBottom and high < _pgTop
+            if barstate.isconfirmed and bar_index > _pgCreatedBar and _pgFullyFilled
+                array.set(priceGapStates, i, 2)
+                box.set_right(_pgBox, bar_index)
+                box.set_border_color(_pgBox, color.gray)
+                box.set_bgcolor(_pgBox, color.new(color.gray, 88))
+                box.set_text(_pgBox, (_pgDir == 1 ? "상승 가격 갭" : "하락 가격 갭") + " | 완전 해소")
+            else if barstate.isconfirmed and bar_index > _pgCreatedBar and _pgPartiallyFilled and _pgState == 0
+                array.set(priceGapStates, i, 1)
+                box.set_right(_pgBox, bar_index + projectionBars)
+                box.set_border_color(_pgBox, color.yellow)
+                box.set_bgcolor(_pgBox, color.new(color.yellow, 86))
+                box.set_text(_pgBox, (_pgDir == 1 ? "상승 가격 갭" : "하락 가격 갭") + " | 부분 해소")
+            else
+                box.set_right(_pgBox, bar_index + projectionBars)
+
+// Detect classic price gaps where consecutive bars have no overlapping range.
+// Bullish gap: current low is above the previous high; bearish gap: current high is below the previous low.
+if enableClassicGaps and barstate.isconfirmed and not na(atr) and atr > 0 and bar_index >= 1
+    bool _bullPriceGap = low > high[1] and (low - high[1]) >= atr * minClassicGapAtr and f_qualityPass(1)
+    bool _bearPriceGap = high < low[1] and (low[1] - high) >= atr * minClassicGapAtr and f_qualityPass(-1)
+    if _bullPriceGap
+        float _pgTop = low
+        float _pgBottom = high[1]
+        box _newPriceGap = box.new(left=bar_index - 1, top=_pgTop, right=bar_index + projectionBars, bottom=math.max(syminfo.mintick, _pgBottom), border_color=color.blue, border_width=1, bgcolor=color.new(color.blue, 86), text="상승 가격 갭 | 미충전", text_color=color.white, text_size=size.small)
+        array.push(priceGapBoxes, _newPriceGap)
+        array.push(priceGapTops, _pgTop)
+        array.push(priceGapBottoms, _pgBottom)
+        array.push(priceGapDirections, 1)
+        array.push(priceGapStates, 0)
+        array.push(priceGapCreatedBars, bar_index)
+    else if _bearPriceGap
+        float _pgTop = low[1]
+        float _pgBottom = high
+        box _newPriceGap = box.new(left=bar_index - 1, top=_pgTop, right=bar_index + projectionBars, bottom=math.max(syminfo.mintick, _pgBottom), border_color=color.orange, border_width=1, bgcolor=color.new(color.orange, 86), text="하락 가격 갭 | 미충전", text_color=color.white, text_size=size.small)
+        array.push(priceGapBoxes, _newPriceGap)
+        array.push(priceGapTops, _pgTop)
+        array.push(priceGapBottoms, _pgBottom)
+        array.push(priceGapDirections, -1)
+        array.push(priceGapStates, 0)
+        array.push(priceGapCreatedBars, bar_index)
+    if array.size(priceGapBoxes) > maxClassicGapBoxes
+        box _oldPriceGap = array.shift(priceGapBoxes)
+        box.delete(_oldPriceGap)
+        array.shift(priceGapTops)
+        array.shift(priceGapBottoms)
+        array.shift(priceGapDirections)
+        array.shift(priceGapStates)
+        array.shift(priceGapCreatedBars)
+
+// The dashed step lines show the previous confirmed HTF rolling range, not the live HTF candle.
+plot(htfContextActive ? htfRangeHigh : na, title="확정 HTF 범위 상단", color=color.new(color.orange, 28), linewidth=1, style=plot.style_stepline)
+plot(htfContextActive ? htfRangeLow : na, title="확정 HTF 범위 하단", color=color.new(color.aqua, 28), linewidth=1, style=plot.style_stepline)
+
+// Optional confirmed pivot markers. They are visually offset back to the pivot
+// candle, but the script only knows them after pivotRight bars have elapsed.
+plotshape(showPivots and not na(pivotHigh), title="확정 피벗 고점", style=shape.triangledown, location=location.abovebar, offset=-pivotRight, color=color.red, size=size.tiny)
+plotshape(showPivots and not na(pivotLow), title="확정 피벗 저점", style=shape.triangleup, location=location.belowbar, offset=-pivotRight, color=color.lime, size=size.tiny)
+
