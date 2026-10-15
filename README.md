@@ -1,8 +1,9 @@
-# 통합 패턴 영역 — Universal Pattern Zones v0.9
+# 통합 패턴 영역 — Universal Pattern Zones v1.0
 
 TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술적 패턴 후보와 예상 가격 영역을 차트에 사각 박스로 표시합니다. 모든 영역과 신호는 분석 보조 수단이며, 가격 도달·매매 성공·수익을 보장하지 않습니다.
 
 ## 최신 버전
+- [v1.0 Pine Script — 오더 블록+FVG 겹침 컨플루언스 및 EQH/EQL 인접 태그](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_0.pine)
 - [v0.9 Pine Script — 캔들 패턴 확장: 모닝스타·이브닝스타·해머·슈팅스타·적삼병·흑삼병](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_9.pine)
 - [v0.8 Pine Script — 하모닉 패턴: AB=CD·가틀리·배트·버터플라이·크랩](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_8.pine)
 - [v0.7 Pine Script — EQH/EQL 유동성 풀·오더 블록 영역 선택](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_7.pine)
@@ -68,6 +69,14 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - 패턴별 알림과 확장 캔들 패턴 on/off 설정 제공
 - 탐지 조건은 차트에서 식별하기 위한 근사 규칙이며, 모든 교과서적 변형을 포괄하지 않음
 
+### v1.0 오더 블록·FVG 컨플루언스
+- 같은 방향의 활성 오더 블록과 미완전 해소 FVG가 실제 가격 범위에서 겹칠 때 별도 컨플루언스 영역 생성
+- 컨플루언스는 소스 오더 블록과 FVG의 생성 봉 키로 중복 박스 생성을 억제
+- 기초 오더 블록이 무효화·제거되거나 FVG가 완전 해소되면 컨플루언스 영역을 종료 표시
+- 겹치는 영역이 활성 EQL(상승형) 또는 EQH(하락형) 가격대에 가까우면 라벨에 인접 정보를 추가
+- 컨플루언스 탐지 on/off, EQH/EQL 근접 허용 ATR 폭, 최대 박스 수 설정과 개별 알림 제공
+- 단순한 가격 겹침 기반 보조 표시이며 독립적인 매수·매도 추천이나 성공 확률 계산은 아님
+
 ## 표시 규칙
 - 형성 중 패턴: 주황색 계열 구조 박스
 - 목표 가격 영역: 패턴 높이 또는 ATR 기반의 반투명 사각 박스
@@ -78,7 +87,7 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 
 ## 설치
 1. TradingView 차트를 열고 하단의 Pine Editor를 엽니다.
-2. [v0.9 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_9.pine)을 열어 코드를 복사합니다.
+2. [v1.0 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_0.pine)을 열어 코드를 복사합니다.
 3. Pine Editor에 붙여넣고 Save를 누른 뒤 Add to chart를 선택합니다.
 4. 알림을 쓰려면 Create Alert에서 필요한 한글 조건을 선택합니다.
 
@@ -90,10 +99,11 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - **ICT/SMC 구조**: BOS·CHOCH·스윕 활성화, EQH/EQL 허용 오차, 오더 블록 전체 캔들/몸통 선택
 - **하모닉 패턴**: 패턴 감지 켜기/끄기, 피보나치 비율 허용 오차, AB=CD 길이 오차, D점 PRZ 폭 및 최대 박스 수
 - **FVG·캔들 설정**: 최소 FVG 크기, 캔들 몸통·핀바 꼬리 조건, 별형 중간 캔들 몸통 비율, 확장 패턴 탐지 켜기/끄기, ATR 목표 거리
+- **OB/FVG 컨플루언스**: 오더 블록과 FVG 겹침 탐지, EQH/EQL 인접 허용 폭, 컨플루언스 박스 최대 개수
 - **표시 설정**: 목표 영역 폭, 오른쪽 투영 길이, 목표 박스 최대 개수
 
 ## 중요한 한계 및 검증 상태
-- 사용자는 v0.8의 정상 작동을 확인했습니다. v0.9는 새 캔들 패턴을 포함하므로 TradingView Pine Editor에서 실제 컴파일 및 차트 확인이 필요합니다. 이 환경에서는 TradingView의 실제 컴파일러를 실행할 수 없습니다.
+- 사용자는 v0.9까지 정상 작동을 확인했습니다. v1.0의 새 컨플루언스 로직은 TradingView Pine Editor에서 실제 컴파일 및 차트 확인이 필요합니다. 이 환경에서는 TradingView의 실제 컴파일러를 실행할 수 없습니다.
 - 하모닉 패턴의 피보나치 조건은 허용 오차를 가진 근사 판별이며, D점 PRZ는 실제 D 피벗 주변의 ATR 기반 표시 영역입니다. 이는 미래 반전을 보장하지 않습니다.
 - BOS/CHOCH의 추세 방향은 스크립트 내부에서 추적하는 단순 편향 상태를 이용합니다. 다양한 ICT/SMC 정의를 완전히 대표하는 것은 아닙니다.
 - 오더 블록은 BOS/CHOCH 직전 탐색 범위 내 최근 반대 방향 캔들의 전체 고가~저가로 근사합니다. 바디만 쓰는 방식, 거래량·상위 시간대 필터, 다중 오더 블록 선택 등 고급 규칙은 아직 포함되지 않았습니다.
@@ -110,5 +120,6 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - [v0.7 — EQH/EQL 유동성 풀 및 오더 블록 영역 선택](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_7.pine)
 - [v0.8 — 하모닉 패턴 AB=CD·가틀리·배트·버터플라이·크랩](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_8.pine)
 - [v0.9 — 캔들 패턴 확장: 모닝스타·이브닝스타·해머·슈팅스타·적삼병·흑삼병](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_9.pine)
+- [v1.0 — 오더 블록·FVG 컨플루언스](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_0.pine)
 
 개발 계획은 [패턴 모듈 확장 로드맵](docs/PATTERN_MODULE_ROADMAP.md)을 참조하세요.
