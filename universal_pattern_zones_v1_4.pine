@@ -270,11 +270,14 @@ f_storeConfirmedTarget(array<box> _boxes, array<float> _necks, array<float> _tar
 
 // Classify local liquidity against a confirmed higher-timeframe rolling range.
 // This is a configurable proxy for internal/external liquidity, not a universal ICT definition.
-f_liquidityClass(float _price, float _rangeHigh, float _rangeLow, float _buffer, bool _enabled) =>
+f_liquidityClass(float _price, int _direction, float _rangeHigh, float _rangeLow, float _buffer, bool _enabled) =>
     string _class = "HTF 미적용"
     if _enabled
         if not na(_rangeHigh) and not na(_rangeLow) and _rangeHigh > _rangeLow
-            _class := _price >= _rangeHigh - _buffer or _price <= _rangeLow + _buffer ? "외부 유동성" : "내부 유동성"
+            if _direction == 1
+                _class := _price >= _rangeHigh - _buffer ? "외부 유동성" : _price < _rangeLow ? "범위 외부" : "내부 유동성"
+            else
+                _class := _price <= _rangeLow + _buffer ? "외부 유동성" : _price > _rangeHigh ? "범위 외부" : "내부 유동성"
         else
             _class := "HTF 데이터 대기"
     _class
@@ -367,7 +370,7 @@ if enableSMC and enableEqualLiquidity and barstate.isconfirmed and not na(atr) a
                     box.set_top(_pool, _mergedLevel + _eqTol)
                     box.set_bottom(_pool, math.max(syminfo.mintick, _mergedLevel - _eqTol))
                     box.set_right(_pool, bar_index + projectionBars)
-                    string _eqhClass = f_liquidityClass(_mergedLevel, htfRangeHigh, htfRangeLow, htfLiquidityBuffer, htfContextActive)
+                    string _eqhClass = f_liquidityClass(_mergedLevel, 1, htfRangeHigh, htfRangeLow, htfLiquidityBuffer, htfContextActive)
                     string _eqhBoundary = f_liquidityBoundaryLabel(_mergedLevel, htfRangeHigh, htfRangeLow, htfLiquidityBuffer, htfContextActive)
                     box.set_text(_pool, "EQH 유동성 풀 | " + _eqhClass + _eqhBoundary + " | 추가 확인")
         if not _eqhMerged
@@ -401,7 +404,7 @@ if enableSMC and enableEqualLiquidity and barstate.isconfirmed and not na(atr) a
                     box.set_top(_pool, _mergedLevel + _eqTol)
                     box.set_bottom(_pool, math.max(syminfo.mintick, _mergedLevel - _eqTol))
                     box.set_right(_pool, bar_index + projectionBars)
-                    string _eqlClass = f_liquidityClass(_mergedLevel, htfRangeHigh, htfRangeLow, htfLiquidityBuffer, htfContextActive)
+                    string _eqlClass = f_liquidityClass(_mergedLevel, -1, htfRangeHigh, htfRangeLow, htfLiquidityBuffer, htfContextActive)
                     string _eqlBoundary = f_liquidityBoundaryLabel(_mergedLevel, htfRangeHigh, htfRangeLow, htfLiquidityBuffer, htfContextActive)
                     box.set_text(_pool, "EQL 유동성 풀 | " + _eqlClass + _eqlBoundary + " | 추가 확인")
         if not _eqlMerged
@@ -428,7 +431,7 @@ if array.size(equalPoolBoxes) > 0 and barstate.isconfirmed
         int _poolState = array.get(equalPoolStates, p)
         float _level = array.get(equalPoolPrices, p)
         int _direction = array.get(equalPoolDirections, p)
-        string _poolClass = f_liquidityClass(_level, htfRangeHigh, htfRangeLow, htfLiquidityBuffer, htfContextActive)
+        string _poolClass = f_liquidityClass(_level, _direction, htfRangeHigh, htfRangeLow, htfLiquidityBuffer, htfContextActive)
         string _poolBoundary = f_liquidityBoundaryLabel(_level, htfRangeHigh, htfRangeLow, htfLiquidityBuffer, htfContextActive)
         string _poolKind = _direction == 1 ? "EQH 유동성 풀" : "EQL 유동성 풀"
         if _poolState == 0
