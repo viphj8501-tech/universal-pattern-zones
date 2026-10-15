@@ -1,8 +1,9 @@
-# 통합 패턴 영역 — Universal Pattern Zones v1.5
+# 통합 패턴 영역 — Universal Pattern Zones v1.6
 
 TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술적 패턴 후보와 예상 가격 영역을 차트에 사각 박스로 표시합니다. 모든 영역과 신호는 분석 보조 수단이며, 가격 도달·매매 성공·수익을 보장하지 않습니다.
 
 ## 최신 버전
+- [v1.6 Pine Script — 일반 가격 갭 및 미충전·부분 해소·완전 해소 상태 추적](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_6.pine)
 - [v1.5 Pine Script — 거래량·ATR·HTF 추세·세션 품질 필터](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_5.pine)
 - [v1.4 Pine Script — 내부·외부 유동성 및 상위 시간대 컨플루언스](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_4.pine)
 - [v1.3 Pine Script — 라운딩 바텀·탑, 컵앤핸들, 확장형·다이아몬드 패턴](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_3.pine)
@@ -116,6 +117,14 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - 각 차트 패턴군의 탐지 on/off, 최소 높이(ATR), 테두리 허용 오차, 최소 스윙 확장 설정 제공
 - 기존 넥라인 확인, 목표 영역, 무효화 처리와 연결하며 박스 수 상한을 공유
 - 차트 패턴 판별은 단순화한 기하학적 근사이며 모든 교과서적 변형을 포괄하지 않음; 알림 코드는 계속 없음
+### v1.6 일반 가격 갭
+- 연속한 두 봉의 가격 범위가 겹치지 않는 상승 갭과 하락 갭을 탐지
+- ATR 대비 최소 갭 크기를 설정하고 기존 거래량·ATR·상위 시간대 추세·세션 품질 필터를 적용
+- 미충전 → 부분 해소 → 완전 해소 상태를 별도로 추적하고, 해소 상태에 따라 박스 색상과 라벨 변경
+- 가격 갭 박스 수 상한을 설정해 오래된 박스를 정리
+- 3개 봉 기준 FVG와는 별도 모듈이며, 갭 발생이 향후 가격 방향이나 매매 성공을 보장하지 않음
+- 알림 호출은 계속 포함하지 않음
+
 ### v1.5 품질 필터
 - 거래량 필터: 거래량이 설정 기간 평균의 지정 배수 이상일 때 신규 패턴 영역을 허용
 - ATR 변동성 필터: ATR/종가 비율이 설정한 최소 퍼센트 이상일 때 신규 패턴 영역을 허용
@@ -145,9 +154,9 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 
 ## 설치
 1. TradingView 차트를 열고 하단의 Pine Editor를 엽니다.
-2. [v1.5 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_5.pine)을 열어 코드를 복사합니다.
+2. [v1.6 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_6.pine)을 열어 코드를 복사합니다.
 3. Pine Editor에 붙여넣고 Save를 누른 뒤 Add to chart를 선택합니다.
-4. v1.5에는 알림 호출이 없습니다. 모든 패턴 모듈 확장이 끝난 뒤 별도 단계에서 알림을 추가할 예정입니다.
+4. v1.6에는 알림 호출이 없습니다. 모든 패턴 모듈 확장이 끝난 뒤 별도 단계에서 알림을 추가할 예정입니다.
 
 ## 주요 설정
 - **탐지 설정**: 피벗 왼쪽·오른쪽 확인 봉 수, ATR 기간, 고점·저점 허용 오차
@@ -157,6 +166,7 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - **ICT/SMC 구조**: BOS·CHOCH·스윕 활성화, EQH/EQL 허용 오차, 오더 블록 전체 캔들/몸통 선택
 - **하모닉 패턴**: 패턴 감지 켜기/끄기, 피보나치 비율 허용 오차, AB=CD 길이 오차, D점 PRZ 폭 및 최대 박스 수
 - **FVG·캔들 설정**: 최소 FVG 크기, 캔들 몸통·핀바 꼬리 조건, 별형 중간 캔들 몸통 비율, 확장 패턴 탐지 켜기/끄기, ATR 목표 거리
+- **가격 갭**: 일반 갭 탐지, 최소 갭 크기(ATR), 최대 갭 박스 수, 미충전·부분 해소·완전 해소 상태
 - **OB/FVG 컨플루언스**: 오더 블록과 FVG 겹침 탐지, EQH/EQL 인접 허용 폭, 컨플루언스 박스 최대 개수
 - **차트 패턴**: 라운딩 바텀/탑, 컵앤핸들, 확장형·다이아몬드 탐지 및 최소 높이·테두리 허용 오차 설정
 - **HTF 유동성**: 상위 시간대, 과거 범위 계산 봉 수, 내부·외부 유동성 경계 폭
@@ -164,12 +174,13 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - **표시 설정**: 목표 영역 폭, 오른쪽 투영 길이, 목표 박스 최대 개수
 
 ## 중요한 한계 및 검증 상태
-- 사용자는 v1.4까지 정상 작동을 확인했습니다. v1.5 품질 필터는 TradingView Pine Editor에서 실제 컴파일 및 차트 검증이 필요합니다. 이 환경에서는 TradingView의 실제 컴파일러를 실행할 수 없습니다.
-- 최신 v1.5 소스에는 alertcondition() 및 alert() 호출이 없습니다. 알림 기능은 모든 패턴 모듈을 확장한 이후 별도 단계에서 다시 설계할 예정입니다.
+- 사용자는 v1.5까지 정상 작동을 확인했습니다. v1.6의 가격 갭 로직은 TradingView Pine Editor에서 실제 컴파일 및 차트 검증이 필요합니다. 이 환경에서는 TradingView의 실제 컴파일러를 실행할 수 없습니다.
+- 최신 v1.6 소스에는 alertcondition() 및 alert() 호출이 없습니다. 알림 기능은 모든 패턴 모듈을 확장한 이후 별도 단계에서 다시 설계할 예정입니다.
 - HTF 정보는 상위 시간대의 이전 확정 롤링 범위에서 계산합니다. 사용자가 선택한 HTF가 차트 시간대보다 높지 않으면 HTF 분류를 비활성화합니다.
 - 하모닉 패턴의 피보나치 조건은 허용 오차를 가진 근사 판별이며, D점 PRZ는 실제 D 피벗 주변의 ATR 기반 표시 영역입니다. 이는 미래 반전을 보장하지 않습니다.
 - BOS/CHOCH의 추세 방향은 스크립트 내부에서 추적하는 단순 편향 상태를 이용합니다. 다양한 ICT/SMC 정의를 완전히 대표하는 것은 아닙니다.
 - 오더 블록은 BOS/CHOCH 직전 탐색 범위 내 최근 반대 방향 캔들의 전체 고가~저가로 근사합니다. v1.5의 거래량·ATR·상위 시간대 EMA·세션 필터는 신규 영역 생성에 적용되며, 별도의 전략 최적화나 패턴별 통계 검증을 대신하지 않습니다.
+- 일반 가격 갭은 연속 두 봉의 고가·저가 범위가 겹치지 않을 때만 탐지합니다. 24시간 거래로 봉 간 갭이 드문 시장이나 시간대에서는 가격 갭 박스가 적게 또는 전혀 나타나지 않을 수 있습니다.
 - 피벗은 오른쪽 확인 봉이 지난 뒤 확정됩니다. 과거 피벗 위치에 표시돼도 당시 실시간으로 미리 알 수 있었던 신호는 아닙니다.
 - 깃발·페넌트·채널은 단순 피벗 기하 규칙으로 추정합니다. 목표 가격은 패턴 높이나 ATR 배수 기반 추정치이며 보장을 뜻하지 않습니다.
 
@@ -189,5 +200,6 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - [v1.3 — 라운딩 바텀/탑, 컵앤핸들, 확장형·다이아몬드 패턴](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_3.pine)
 - [v1.4 — 내부·외부 유동성 및 HTF 컨플루언스](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_4.pine)
 - [v1.5 — 거래량·ATR·HTF 추세·세션 품질 필터](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_5.pine)
+- [v1.6 — 일반 가격 갭 및 해소 상태 추적](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_6.pine)
 
 개발 계획은 [패턴 모듈 확장 로드맵](docs/PATTERN_MODULE_ROADMAP.md)을 참조하세요.
