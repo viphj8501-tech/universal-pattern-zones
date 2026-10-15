@@ -771,10 +771,11 @@ if newPivot and not na(atr) and atr > 0
             float hCD_AB = hCD / math.max(hAB, syminfo.mintick)
             float hAD_XA = hAD / math.max(hXABar, syminfo.mintick)
             bool hLegsValid = hXABar >= atr * 0.25 and hAB >= atr * 0.15 and hBC >= atr * 0.15 and hCD >= atr * 0.15
+            bool hShapeValid = hBullSequence ? (hX < hB and hB < hA and hB < hC and hC < hA and hD < hC) : (hX > hB and hB > hA and hB > hC and hC > hA and hD > hC)
             float hTol = harmonicRatioTolerance
             bool hCValid = hBC_AB >= 0.382 - hTol and hBC_AB <= 0.886 + hTol
             string hPattern = ""
-            if hLegsValid and hCValid
+            if hLegsValid and hCValid and hShapeValid
                 bool hCrab = hAB_XA >= 0.382 - hTol and hAB_XA <= 0.618 + hTol and math.abs(hAD_XA - 1.618) <= hTol and hCD_BC >= 2.24 - hTol and hCD_BC <= 3.618 + hTol
                 bool hButterfly = math.abs(hAB_XA - 0.786) <= hTol and hAD_XA >= 1.27 - hTol and hAD_XA <= 1.618 + hTol and hCD_BC >= 1.618 - hTol and hCD_BC <= 2.618 + hTol
                 bool hGartley = math.abs(hAB_XA - 0.618) <= hTol and math.abs(hAD_XA - 0.786) <= hTol and hCD_BC >= 1.13 - hTol and hCD_BC <= 1.618 + hTol
