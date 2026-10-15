@@ -896,7 +896,7 @@ if newPivot and not na(atr) and atr > 0
             float roundTarget = roundSupport - roundDepth
             float roundInvalidation = roundCenterHigh + tolerance
             if roundSupportsMatch and roundTopShape and roundDepth >= atr * chartPatternMinDepthAtr and roundTarget > syminfo.mintick
-                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidation s, patternDirections, patternStates, patternNames, array.get(pivotBars, r0 + 6), roundTarget, zoneWidth, roundSupport, roundInvalidation, -1, "라운딩 탑", projectionBars, maxPatternBoxes)
+                f_storePattern(patternBoxes, patternNecklines, patternTargets, patternInvalidations, patternDirections, patternStates, patternNames, array.get(pivotBars, r0 + 6), roundTarget, zoneWidth, roundSupport, roundInvalidation, -1, "라운딩 탑", projectionBars, maxPatternBoxes)
                 madePattern := true
                 patternCandidateNow := true
 
