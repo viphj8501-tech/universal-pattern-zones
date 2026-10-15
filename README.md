@@ -1,8 +1,9 @@
-# 통합 패턴 영역 — Universal Pattern Zones v1.8
+# 통합 패턴 영역 — Universal Pattern Zones v1.9
 
 TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술적 패턴 후보와 예상 가격 영역을 차트에 사각 박스로 표시합니다. 모든 영역과 신호는 분석 보조 수단이며, 가격 도달·매매 성공·수익을 보장하지 않습니다.
 
 ## 최신 버전
+- [v1.9 Pine Script — 진단·검증 패널](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_9.pine)
 - [v1.8 Pine Script — 하모닉+SMC+반전 캔들 3중 합류](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_8.pine)
 - [v1.7 Pine Script — 쐐기 돌파 필터 및 가격 갭+FVG 복합 합류](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_7.pine)
 - [v1.6 Pine Script — 일반 가격 갭 및 미충전·부분 해소·완전 해소 상태 추적](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_6.pine)
@@ -111,6 +112,15 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - 확장 패턴 켜기/끄기, 도지 몸통 비율, 하라미 몸통 비율, 집게형 허용 오차, 장대 몸통 크기 설정 제공
 - 기존 캔들 목표 영역·신호 캔들 극값 무효화·박스 개수 제한과 연계; 한 봉에서 여러 형태가 겹치면 우선순위가 높은 대표 라벨 하나를 표시
 - v1.1부터 요청에 따라 alertcondition() 및 alert() 호출이 없으며 v1.2도 알림 코드를 포함하지 않음
+### v1.9 진단·검증 패널
+- 차트 우측 상단 패널에서 현재 봉의 확정 여부와 피벗 오른쪽 확인 봉 수를 표시
+- 최근 SMC 구조 이벤트, 하모닉 PRZ, 방향성 반전 캔들의 발생 시점·이름을 표시
+- 3중 합류 박스, FVG 박스, 오더 블록의 저장 개수를 요약
+- 거래량·ATR·HTF 추세·세션 필터가 켜져 있는지와 현재 상승/하락 방향의 필터 통과 여부를 표시
+- 선택 HTF가 활성화되었는지와 피벗 확인 지연/이전 확정 HTF 값 사용에 관한 안내 제공
+- 진단 패널은 기본 표시되며 '진단 패널 표시' 옵션으로 끌 수 있음; 탐지 조건이나 박스 생성 로직은 변경하지 않음
+- alertcondition() 및 alert() 호출은 포함하지 않음
+
 ### v1.8 하모닉·ICT/SMC·반전 캔들 3중 합류
 - 하모닉 완성 PRZ, ICT/SMC의 BOS·CHOCH 또는 유동성 스윕, 방향성 반전 캔들 신호를 각각 독립 이벤트로 추적
 - 세 신호가 같은 방향이며 설정한 봉 수 이내에 발생하고, 가격 구간이 ATR 허용폭을 적용한 뒤 공통으로 겹칠 때 3중 합류 박스를 생성
@@ -174,9 +184,9 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 
 ## 설치
 1. TradingView 차트를 열고 하단의 Pine Editor를 엽니다.
-2. [v1.8 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_8.pine)을 열어 코드를 복사합니다.
+2. [v1.9 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_9.pine)을 열어 코드를 복사합니다.
 3. Pine Editor에 붙여넣고 Save를 누른 뒤 Add to chart를 선택합니다.
-4. v1.8에는 알림 호출이 없습니다. 모든 패턴 모듈 확장이 끝난 뒤 별도 단계에서 알림을 추가할 예정입니다.
+4. v1.9에는 알림 호출이 없습니다. 모든 패턴 모듈 확장이 끝난 뒤 별도 단계에서 알림을 추가할 예정입니다.
 
 ## 주요 설정
 - **탐지 설정**: 피벗 왼쪽·오른쪽 확인 봉 수, ATR 기간, 고점·저점 허용 오차
@@ -195,10 +205,11 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - **HTF 유동성**: 상위 시간대, 과거 범위 계산 봉 수, 내부·외부 유동성 경계 폭
 - **품질 필터**: 거래량 평균 기간·배수, 최소 ATR/종가 %, 상위 시간대 EMA 방향·기간, 세션 및 시간대
 - **표시 설정**: 목표 영역 폭, 오른쪽 투영 길이, 목표 박스 최대 개수
+- **진단·검증**: 현재 봉 상태, 원천 이벤트 발생 시점, 저장 박스 수, 필터 판정, HTF 기준 정보
 
 ## 중요한 한계 및 검증 상태
-- 사용자는 v1.7까지 정상 작동을 확인했습니다. v1.8의 다중 모듈 합류 로직은 TradingView Pine Editor에서 실제 컴파일 및 차트 검증이 필요합니다. 이 환경에서는 TradingView의 실제 컴파일러를 실행할 수 없습니다.
-- 최신 v1.8 소스에는 alertcondition() 및 alert() 호출이 없습니다. 알림 기능은 모든 패턴 모듈을 확장한 이후 별도 단계에서 다시 설계할 예정입니다.
+- 사용자가 v1.8 정상 작동을 확인했습니다. v1.9 진단 패널은 TradingView Pine Editor에서 실제 컴파일 및 차트 검증이 필요합니다. 여기서 수행한 것은 정적 검사이며 TradingView 컴파일러 실행은 아닙니다.
+- 최신 v1.9 소스에는 alertcondition() 및 alert() 호출이 없습니다. 알림 기능은 모든 패턴 모듈을 확장한 이후 별도 단계에서 다시 설계할 예정입니다.
 - HTF 정보는 상위 시간대의 이전 확정 롤링 범위에서 계산합니다. 사용자가 선택한 HTF가 차트 시간대보다 높지 않으면 HTF 분류를 비활성화합니다.
 - 하모닉 패턴의 피보나치 조건은 허용 오차를 가진 근사 판별이며, D점 PRZ는 실제 D 피벗 주변의 ATR 기반 표시 영역입니다. 이는 미래 반전을 보장하지 않습니다.
 - BOS/CHOCH의 추세 방향은 스크립트 내부에서 추적하는 단순 편향 상태를 이용합니다. 다양한 ICT/SMC 정의를 완전히 대표하는 것은 아닙니다.
@@ -226,6 +237,7 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - [v1.5 — 거래량·ATR·HTF 추세·세션 품질 필터](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_5.pine)
 - [v1.6 — 일반 가격 갭 및 해소 상태 추적](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_6.pine)
 - [v1.7 — 쐐기 돌파 필터 및 가격 갭+FVG 복합 합류](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_7.pine)
+- [v1.9 — 진단·검증 패널](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_9.pine)
 - [v1.8 — 하모닉+SMC+반전 캔들 3중 합류](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_8.pine)
 
 개발 계획은 [패턴 모듈 확장 로드맵](docs/PATTERN_MODULE_ROADMAP.md)을 참조하세요.
