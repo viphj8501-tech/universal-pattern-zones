@@ -1,8 +1,9 @@
-# 통합 패턴 영역 — Universal Pattern Zones v1.3
+# 통합 패턴 영역 — Universal Pattern Zones v1.4
 
 TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술적 패턴 후보와 예상 가격 영역을 차트에 사각 박스로 표시합니다. 모든 영역과 신호는 분석 보조 수단이며, 가격 도달·매매 성공·수익을 보장하지 않습니다.
 
 ## 최신 버전
+- [v1.4 Pine Script — 내부·외부 유동성 및 상위 시간대 컨플루언스](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_4.pine)
 - [v1.3 Pine Script — 라운딩 바텀·탑, 컵앤핸들, 확장형·다이아몬드 패턴](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_3.pine)
 - [v1.2 Pine Script — 도지·하라미·관통형·먹구름형·집게형·인사이드/아웃사이드 바·장대캔들](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_2.pine)
 - [v1.1 Pine Script — 사이퍼·샤크 하모닉 및 AB=CD 변형, 알림 코드 제거](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_1.pine)
@@ -114,6 +115,15 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - 각 차트 패턴군의 탐지 on/off, 최소 높이(ATR), 테두리 허용 오차, 최소 스윙 확장 설정 제공
 - 기존 넥라인 확인, 목표 영역, 무효화 처리와 연결하며 박스 수 상한을 공유
 - 차트 패턴 판별은 단순화한 기하학적 근사이며 모든 교과서적 변형을 포괄하지 않음; 알림 코드는 계속 없음
+### v1.4 내부·외부 유동성 및 HTF 컨플루언스
+- EQH/EQL을 선택한 상위 시간대의 과거 확정 롤링 고가·저가 범위와 비교해 내부 유동성 / 외부 유동성 / 범위 외부로 라벨링
+- 상위 시간대 범위 상단·하단과 가까운 EQH/EQL에는 HTF 경계 근접 정보를 추가
+- 오더 블록+FVG 겹침 영역이 HTF 범위 상단·하단에 가까우면 컨플루언스 박스에 HTF 위치 태그 추가
+- HTF 범위는 `request.security()`에서 이전 확정 HTF 봉의 범위를 사용해 실시간 미확정 HTF 봉에 의한 변동을 줄임
+- 상위 시간대, 범위 계산 봉 수, 내부·외부 경계 폭 설정과 HTF 상·하단 단계선 표시 제공
+- 차트 시간대가 선택한 HTF보다 같거나 높으면 HTF 분류를 적용하지 않음
+- 내부·외부 분류는 과거 HTF 범위와 사용자 허용 폭을 이용한 근사 프록시이며, 모든 ICT 유동성 정의를 대신하지 않음
+- 알림 호출은 계속 포함하지 않음
 
 ## 표시 규칙
 - 형성 중 패턴: 주황색 계열 구조 박스
@@ -125,9 +135,9 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 
 ## 설치
 1. TradingView 차트를 열고 하단의 Pine Editor를 엽니다.
-2. [v1.3 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_3.pine)을 열어 코드를 복사합니다.
+2. [v1.4 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_4.pine)을 열어 코드를 복사합니다.
 3. Pine Editor에 붙여넣고 Save를 누른 뒤 Add to chart를 선택합니다.
-4. v1.3에는 알림 호출이 없습니다. 모든 패턴 모듈 확장이 끝난 뒤 별도 단계에서 알림을 추가할 예정입니다.
+4. v1.4에는 알림 호출이 없습니다. 모든 패턴 모듈 확장이 끝난 뒤 별도 단계에서 알림을 추가할 예정입니다.
 
 ## 주요 설정
 - **탐지 설정**: 피벗 왼쪽·오른쪽 확인 봉 수, ATR 기간, 고점·저점 허용 오차
@@ -139,11 +149,13 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - **FVG·캔들 설정**: 최소 FVG 크기, 캔들 몸통·핀바 꼬리 조건, 별형 중간 캔들 몸통 비율, 확장 패턴 탐지 켜기/끄기, ATR 목표 거리
 - **OB/FVG 컨플루언스**: 오더 블록과 FVG 겹침 탐지, EQH/EQL 인접 허용 폭, 컨플루언스 박스 최대 개수
 - **차트 패턴**: 라운딩 바텀/탑, 컵앤핸들, 확장형·다이아몬드 탐지 및 최소 높이·테두리 허용 오차 설정
+- **HTF 유동성**: 상위 시간대, 과거 범위 계산 봉 수, 내부·외부 유동성 경계 폭
 - **표시 설정**: 목표 영역 폭, 오른쪽 투영 길이, 목표 박스 최대 개수
 
 ## 중요한 한계 및 검증 상태
-- 사용자는 v1.2까지 정상 작동을 확인했습니다. v1.3 차트 패턴 로직은 TradingView Pine Editor에서 실제 컴파일 및 차트 검증이 필요합니다. 이 환경에서는 TradingView의 실제 컴파일러를 실행할 수 없습니다.
-- 최신 v1.3 소스에는 alertcondition() 및 alert() 호출이 없습니다. 알림 기능은 모든 패턴 모듈을 확장한 이후 별도 단계에서 다시 설계할 예정입니다.
+- 사용자는 v1.3까지 정상 작동을 확인했습니다. v1.4의 HTF 컨텍스트 로직은 TradingView Pine Editor에서 실제 컴파일 및 차트 검증이 필요합니다. 이 환경에서는 TradingView의 실제 컴파일러를 실행할 수 없습니다.
+- 최신 v1.4 소스에는 alertcondition() 및 alert() 호출이 없습니다. 알림 기능은 모든 패턴 모듈을 확장한 이후 별도 단계에서 다시 설계할 예정입니다.
+- HTF 정보는 상위 시간대의 이전 확정 롤링 범위에서 계산합니다. 사용자가 선택한 HTF가 차트 시간대보다 높지 않으면 HTF 분류를 비활성화합니다.
 - 하모닉 패턴의 피보나치 조건은 허용 오차를 가진 근사 판별이며, D점 PRZ는 실제 D 피벗 주변의 ATR 기반 표시 영역입니다. 이는 미래 반전을 보장하지 않습니다.
 - BOS/CHOCH의 추세 방향은 스크립트 내부에서 추적하는 단순 편향 상태를 이용합니다. 다양한 ICT/SMC 정의를 완전히 대표하는 것은 아닙니다.
 - 오더 블록은 BOS/CHOCH 직전 탐색 범위 내 최근 반대 방향 캔들의 전체 고가~저가로 근사합니다. 바디만 쓰는 방식, 거래량·상위 시간대 필터, 다중 오더 블록 선택 등 고급 규칙은 아직 포함되지 않았습니다.
@@ -164,5 +176,6 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - [v1.1 — 사이퍼·샤크·AB=CD 변형 및 알림 코드 제거](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_1.pine)
 - [v1.2 — 추가 캔들 패턴 11종 및 알림 코드 없음](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_2.pine)
 - [v1.3 — 라운딩 바텀/탑, 컵앤핸들, 확장형·다이아몬드 패턴](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_3.pine)
+- [v1.4 — 내부·외부 유동성 및 HTF 컨플루언스](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_4.pine)
 
 개발 계획은 [패턴 모듈 확장 로드맵](docs/PATTERN_MODULE_ROADMAP.md)을 참조하세요.
