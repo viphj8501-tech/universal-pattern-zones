@@ -1,8 +1,9 @@
-# 통합 패턴 영역 — Universal Pattern Zones v1.6
+# 통합 패턴 영역 — Universal Pattern Zones v1.7
 
 TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술적 패턴 후보와 예상 가격 영역을 차트에 사각 박스로 표시합니다. 모든 영역과 신호는 분석 보조 수단이며, 가격 도달·매매 성공·수익을 보장하지 않습니다.
 
 ## 최신 버전
+- [v1.7 Pine Script — 쐐기 돌파 필터 및 가격 갭+FVG 복합 합류](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_7.pine)
 - [v1.6 Pine Script — 일반 가격 갭 및 미충전·부분 해소·완전 해소 상태 추적](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_6.pine)
 - [v1.5 Pine Script — 거래량·ATR·HTF 추세·세션 품질 필터](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_5.pine)
 - [v1.4 Pine Script — 내부·외부 유동성 및 상위 시간대 컨플루언스](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_4.pine)
@@ -109,6 +110,15 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - 확장 패턴 켜기/끄기, 도지 몸통 비율, 하라미 몸통 비율, 집게형 허용 오차, 장대 몸통 크기 설정 제공
 - 기존 캔들 목표 영역·신호 캔들 극값 무효화·박스 개수 제한과 연계; 한 봉에서 여러 형태가 겹치면 우선순위가 높은 대표 라벨 하나를 표시
 - v1.1부터 요청에 따라 alertcondition() 및 alert() 호출이 없으며 v1.2도 알림 코드를 포함하지 않음
+### v1.7 쐐기 돌파 필터 및 복합 패턴 합류
+- 삼각형·쐐기·채널 등 기하학 패턴의 돌파에서 선택적인 ATR 최소 이탈폭 조건 제공
+- 선택적인 돌파봉 몸통 방향 확인: 상승 돌파는 양봉, 하락 돌파는 음봉 조건 추가
+- 기본값은 두 필터 모두 꺼짐으로 설정해 기존 돌파 판정과 표시를 유지
+- 동일 방향의 일반 가격 갭과 3개 봉 FVG 가격 영역이 겹치면 복합 합류 박스를 생성
+- 복합 영역에 오더 블록도 같은 방향으로 겹치면 OB 중첩 태그 추가
+- 소스 가격 갭 또는 FVG가 완전 해소되면 복합 합류 박스를 종료하고, 중복 쌍과 최대 박스 수를 관리
+- 알림 호출은 계속 포함하지 않음
+
 ### v1.6 일반 가격 갭
 - 연속한 두 봉의 가격 범위가 겹치지 않는 상승 갭과 하락 갭을 탐지
 - ATR 대비 최소 갭 크기를 설정하고 기존 거래량·ATR·상위 시간대 추세·세션 품질 필터를 적용
@@ -155,15 +165,17 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 
 ## 설치
 1. TradingView 차트를 열고 하단의 Pine Editor를 엽니다.
-2. [v1.6 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_6.pine)을 열어 코드를 복사합니다.
+2. [v1.7 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_7.pine)을 열어 코드를 복사합니다.
 3. Pine Editor에 붙여넣고 Save를 누른 뒤 Add to chart를 선택합니다.
-4. v1.6에는 알림 호출이 없습니다. 모든 패턴 모듈 확장이 끝난 뒤 별도 단계에서 알림을 추가할 예정입니다.
+4. v1.7에는 알림 호출이 없습니다. 모든 패턴 모듈 확장이 끝난 뒤 별도 단계에서 알림을 추가할 예정입니다.
 
 ## 주요 설정
 - **탐지 설정**: 피벗 왼쪽·오른쪽 확인 봉 수, ATR 기간, 고점·저점 허용 오차
 - **패턴 설정**: 반전·FVG·캔들·기하학 패턴군의 탐지 켜기/끄기
 - **추세 지속 패턴**: 깃발·페넌트·박스권·채널 탐지 및 선행 추세 최소 폭
 - **돌파·재시험**: 재시험 허용 폭, 박스 최대 개수
+- **삼각형·쐐기**: 선택적 돌파 ATR 이탈폭 및 돌파봉 몸통 방향 필터
+- **복합 패턴 합류**: 가격 갭+FVG 합류 켜기/끄기, 최소 겹침 폭, 최대 합류 박스 수
 - **ICT/SMC 구조**: BOS·CHOCH·스윕 활성화, EQH/EQL 허용 오차, 오더 블록 전체 캔들/몸통 선택
 - **하모닉 패턴**: 패턴 감지 켜기/끄기, 피보나치 비율 허용 오차, AB=CD 길이 오차, D점 PRZ 폭 및 최대 박스 수
 - **FVG·캔들 설정**: 최소 FVG 크기, 캔들 몸통·핀바 꼬리 조건, 별형 중간 캔들 몸통 비율, 확장 패턴 탐지 켜기/끄기, ATR 목표 거리
@@ -175,8 +187,8 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - **표시 설정**: 목표 영역 폭, 오른쪽 투영 길이, 목표 박스 최대 개수
 
 ## 중요한 한계 및 검증 상태
-- 사용자는 v1.5까지 정상 작동을 확인했습니다. v1.6의 가격 갭 로직은 TradingView Pine Editor에서 실제 컴파일 및 차트 검증이 필요합니다. 이 환경에서는 TradingView의 실제 컴파일러를 실행할 수 없습니다.
-- 최신 v1.6 소스에는 alertcondition() 및 alert() 호출이 없습니다. 알림 기능은 모든 패턴 모듈을 확장한 이후 별도 단계에서 다시 설계할 예정입니다.
+- 사용자는 v1.6까지 정상 작동을 확인했습니다. v1.7의 쐐기 돌파 필터와 복합 합류 로직은 TradingView Pine Editor에서 실제 컴파일 및 차트 검증이 필요합니다. 이 환경에서는 TradingView의 실제 컴파일러를 실행할 수 없습니다.
+- 최신 v1.7 소스에는 alertcondition() 및 alert() 호출이 없습니다. 알림 기능은 모든 패턴 모듈을 확장한 이후 별도 단계에서 다시 설계할 예정입니다.
 - HTF 정보는 상위 시간대의 이전 확정 롤링 범위에서 계산합니다. 사용자가 선택한 HTF가 차트 시간대보다 높지 않으면 HTF 분류를 비활성화합니다.
 - 하모닉 패턴의 피보나치 조건은 허용 오차를 가진 근사 판별이며, D점 PRZ는 실제 D 피벗 주변의 ATR 기반 표시 영역입니다. 이는 미래 반전을 보장하지 않습니다.
 - BOS/CHOCH의 추세 방향은 스크립트 내부에서 추적하는 단순 편향 상태를 이용합니다. 다양한 ICT/SMC 정의를 완전히 대표하는 것은 아닙니다.
@@ -202,5 +214,6 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - [v1.4 — 내부·외부 유동성 및 HTF 컨플루언스](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_4.pine)
 - [v1.5 — 거래량·ATR·HTF 추세·세션 품질 필터](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_5.pine)
 - [v1.6 — 일반 가격 갭 및 해소 상태 추적](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_6.pine)
+- [v1.7 — 쐐기 돌파 필터 및 가격 갭+FVG 복합 합류](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_7.pine)
 
 개발 계획은 [패턴 모듈 확장 로드맵](docs/PATTERN_MODULE_ROADMAP.md)을 참조하세요.
