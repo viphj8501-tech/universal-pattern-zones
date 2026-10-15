@@ -1,8 +1,9 @@
-# 통합 패턴 영역 — Universal Pattern Zones v1.0
+# 통합 패턴 영역 — Universal Pattern Zones v1.1
 
 TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술적 패턴 후보와 예상 가격 영역을 차트에 사각 박스로 표시합니다. 모든 영역과 신호는 분석 보조 수단이며, 가격 도달·매매 성공·수익을 보장하지 않습니다.
 
 ## 최신 버전
+- [v1.1 Pine Script — 사이퍼·샤크 하모닉 및 AB=CD 변형, 알림 코드 제거](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_1.pine)
 - [v1.0 Pine Script — 오더 블록+FVG 겹침 컨플루언스 및 EQH/EQL 인접 태그](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_0.pine)
 - [v0.9 Pine Script — 캔들 패턴 확장: 모닝스타·이브닝스타·해머·슈팅스타·적삼병·흑삼병](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_9.pine)
 - [v0.8 Pine Script — 하모닉 패턴: AB=CD·가틀리·배트·버터플라이·크랩](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_8.pine)
@@ -76,6 +77,13 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - 겹치는 영역이 활성 EQL(상승형) 또는 EQH(하락형) 가격대에 가까우면 라벨에 인접 정보를 추가
 - 컨플루언스 탐지 on/off, EQH/EQL 근접 허용 ATR 폭, 최대 박스 수 설정과 개별 알림 제공
 - 단순한 가격 겹침 기반 보조 표시이며 독립적인 매수·매도 추천이나 성공 확률 계산은 아님
+### v1.1 하모닉 패턴 확장 및 알림 코드 제거
+- 사이퍼(Cypher): AB/XA, BC/XA, CD/XC 비율과 C점 바깥 확장 및 D점 형상을 함께 검사
+- 샤크(Shark): B점 XA 바깥 확장, BC/AB 확장, D점의 X 기준 거리 조건을 검사
+- AB=CD 변형: CD/AB가 1.272 또는 1.618에 가까운 확장형을 구분 표시
+- 사이퍼·샤크·AB=CD 변형을 각각 켜고 끄는 설정 추가
+- 하모닉 비율 조건은 허용 오차를 쓰는 근사 구현으로, 실제 차트에서 추가 검증 필요
+- 요청에 따라 alertcondition() 및 alert() 호출을 모두 제거. 패턴 구성 확장 후 별도 단계에서 알림을 설계할 예정
 
 ## 표시 규칙
 - 형성 중 패턴: 주황색 계열 구조 박스
@@ -87,9 +95,9 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 
 ## 설치
 1. TradingView 차트를 열고 하단의 Pine Editor를 엽니다.
-2. [v1.0 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_0.pine)을 열어 코드를 복사합니다.
+2. [v1.1 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_1.pine)을 열어 코드를 복사합니다.
 3. Pine Editor에 붙여넣고 Save를 누른 뒤 Add to chart를 선택합니다.
-4. 알림을 쓰려면 Create Alert에서 필요한 한글 조건을 선택합니다.
+4. v1.1에는 알림 호출이 없습니다. 요청에 따라 패턴 모듈을 먼저 확장하고, 알림은 패턴 구성이 완료된 뒤 별도 단계에서 추가할 예정입니다.
 
 ## 주요 설정
 - **탐지 설정**: 피벗 왼쪽·오른쪽 확인 봉 수, ATR 기간, 고점·저점 허용 오차
@@ -103,7 +111,8 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - **표시 설정**: 목표 영역 폭, 오른쪽 투영 길이, 목표 박스 최대 개수
 
 ## 중요한 한계 및 검증 상태
-- 사용자는 v0.9까지 정상 작동을 확인했습니다. v1.0의 새 컨플루언스 로직은 TradingView Pine Editor에서 실제 컴파일 및 차트 확인이 필요합니다. 이 환경에서는 TradingView의 실제 컴파일러를 실행할 수 없습니다.
+- 사용자는 v0.9까지 정상 작동을 확인했습니다. v1.0 컨플루언스와 v1.1 하모닉 확장 로직은 TradingView Pine Editor에서 실제 컴파일 및 차트 확인이 필요합니다. 이 환경에서는 TradingView의 실제 컴파일러를 실행할 수 없습니다.
+- v1.1 소스에서는 모든 alertcondition() 및 alert() 호출을 제거했습니다. 현재 알림 등록 기능은 없으며, 패턴 추가 작업 이후 별도로 구현할 계획입니다.
 - 하모닉 패턴의 피보나치 조건은 허용 오차를 가진 근사 판별이며, D점 PRZ는 실제 D 피벗 주변의 ATR 기반 표시 영역입니다. 이는 미래 반전을 보장하지 않습니다.
 - BOS/CHOCH의 추세 방향은 스크립트 내부에서 추적하는 단순 편향 상태를 이용합니다. 다양한 ICT/SMC 정의를 완전히 대표하는 것은 아닙니다.
 - 오더 블록은 BOS/CHOCH 직전 탐색 범위 내 최근 반대 방향 캔들의 전체 고가~저가로 근사합니다. 바디만 쓰는 방식, 거래량·상위 시간대 필터, 다중 오더 블록 선택 등 고급 규칙은 아직 포함되지 않았습니다.
@@ -121,5 +130,6 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - [v0.8 — 하모닉 패턴 AB=CD·가틀리·배트·버터플라이·크랩](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_8.pine)
 - [v0.9 — 캔들 패턴 확장: 모닝스타·이브닝스타·해머·슈팅스타·적삼병·흑삼병](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_9.pine)
 - [v1.0 — 오더 블록·FVG 컨플루언스](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_0.pine)
+- [v1.1 — 사이퍼·샤크·AB=CD 변형 및 알림 코드 제거](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_1.pine)
 
 개발 계획은 [패턴 모듈 확장 로드맵](docs/PATTERN_MODULE_ROADMAP.md)을 참조하세요.
