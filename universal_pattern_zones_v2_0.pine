@@ -1906,7 +1906,7 @@ if barstate.islast
         table.cell(diagnosticsTable, 0, 18, "필터 설정", text_color=color.white, bgcolor=color.new(color.gray, 75), text_size=size.small)
         table.cell(diagnosticsTable, 1, 18, _diagFilters, text_color=color.white, bgcolor=color.new(color.black, 15), text_size=size.small)
         table.cell(diagnosticsTable, 0, 19, "품질 게이트", text_color=color.white, bgcolor=color.new(color.gray, 75), text_size=size.small)
-        table.cell(diagnosticsTable, 1, 19, _diagQuality == "" ? "현재 통과 없음" : _diagQuality, text_color=color.white, bgcolor=color.new(color.black, 15), text_size=size.small)
+        table.cell(diagnosticsTable, 1, 19, _diagQuality, text_color=color.white, bgcolor=color.new(color.black, 15), text_size=size.small)
         table.cell(diagnosticsTable, 0, 20, "상승 차단 사유", text_color=color.white, bgcolor=color.new(color.gray, 75), text_size=size.small)
         table.cell(diagnosticsTable, 1, 20, _diagBullBlockers, text_color=color.white, bgcolor=color.new(color.black, 15), text_size=size.small)
         table.cell(diagnosticsTable, 0, 21, "하락 차단 사유", text_color=color.white, bgcolor=color.new(color.gray, 75), text_size=size.small)
