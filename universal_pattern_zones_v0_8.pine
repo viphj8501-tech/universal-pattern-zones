@@ -664,7 +664,8 @@ if array.size(geometryBoxes) > 0 and not na(atr)
                 box.set_right(_gb, bar_index + projectionBars)
 
 // Detect patterns when a newly confirmed pivot is added.
-bool patternCandidateNow = false\nbool harmonicDetectedNow = false
+bool patternCandidateNow = false
+bool harmonicDetectedNow = false
 if newPivot and not na(atr) and atr > 0
     int n = array.size(pivotTypes)
     bool madePattern = false
@@ -1048,4 +1049,5 @@ alertcondition(orderBlockInvalidatedNow, title="오더 블록 무효화", messag
 alertcondition(equalHighPoolDetectedNow, title="EQH 유동성 풀 감지", message="비슷한 높이의 확정 스윙 고점이 확인되어 EQH 유동성 풀을 표시했습니다.")
 alertcondition(equalLowPoolDetectedNow, title="EQL 유동성 풀 감지", message="비슷한 높이의 확정 스윙 저점이 확인되어 EQL 유동성 풀을 표시했습니다.")
 alertcondition(equalHighPoolSweptNow, title="EQH 유동성 풀 스윕", message="가격이 EQH 유동성 풀 레벨 위로 움직인 뒤 그 아래에서 종가를 형성했습니다.")
-alertcondition(equalLowPoolSweptNow, title="EQL 유동성 풀 스윕", message="가격이 EQL 유동성 풀 레벨 아래로 움직인 뒤 그 위에서 종가를 형성했습니다.")\nalertcondition(harmonicDetectedNow, title="하모닉 패턴 완성", message="확정된 X-A-B-C-D 피벗에서 하모닉 패턴과 D점 잠재 반전 영역(PRZ)이 감지되었습니다.")
+alertcondition(equalLowPoolSweptNow, title="EQL 유동성 풀 스윕", message="가격이 EQL 유동성 풀 레벨 아래로 움직인 뒤 그 위에서 종가를 형성했습니다.")
+alertcondition(harmonicDetectedNow, title="하모닉 패턴 완성", message="확정된 X-A-B-C-D 피벗에서 하모닉 패턴과 D점 잠재 반전 영역(PRZ)이 감지되었습니다.")
