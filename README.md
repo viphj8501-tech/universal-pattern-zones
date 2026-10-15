@@ -1,8 +1,9 @@
-# 통합 패턴 영역 — Universal Pattern Zones v1.1
+# 통합 패턴 영역 — Universal Pattern Zones v1.2
 
 TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술적 패턴 후보와 예상 가격 영역을 차트에 사각 박스로 표시합니다. 모든 영역과 신호는 분석 보조 수단이며, 가격 도달·매매 성공·수익을 보장하지 않습니다.
 
 ## 최신 버전
+- [v1.2 Pine Script — 도지·하라미·관통형·먹구름형·집게형·인사이드/아웃사이드 바·장대캔들](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_2.pine)
 - [v1.1 Pine Script — 사이퍼·샤크 하모닉 및 AB=CD 변형, 알림 코드 제거](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_1.pine)
 - [v1.0 Pine Script — 오더 블록+FVG 겹침 컨플루언스 및 EQH/EQL 인접 태그](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_0.pine)
 - [v0.9 Pine Script — 캔들 패턴 확장: 모닝스타·이브닝스타·해머·슈팅스타·적삼병·흑삼병](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_9.pine)
@@ -27,6 +28,12 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - 모닝스타 / 이브닝스타
 - 하락 흐름 뒤 해머 / 상승 흐름 뒤 슈팅스타
 - 적삼병 / 흑삼병
+- 도지
+- 상승·하락 하라미
+- 관통형 / 먹구름형
+- 집게형 저점 / 집게형 고점
+- 상승·하락 인사이드 바 / 아웃사이드 바
+- 장대양봉 / 장대음봉
 
 ### 삼각형·쐐기 및 추세 지속
 - 상승 삼각형 / 하락 삼각형 / 대칭 삼각형
@@ -84,6 +91,16 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - 사이퍼·샤크·AB=CD 변형을 각각 켜고 끄는 설정 추가
 - 하모닉 비율 조건은 허용 오차를 쓰는 근사 구현으로, 실제 차트에서 추가 검증 필요
 - 요청에 따라 alertcondition() 및 alert() 호출을 모두 제거. 패턴 구성 확장 후 별도 단계에서 알림을 설계할 예정
+### v1.2 캔들 패턴 확장
+- 도지: 전체 캔들 범위 대비 작은 몸통으로 식별; 도지는 본질적으로 방향 불확정이며 목표 영역 방향은 최근 가격 움직임을 이용한 표시상 추정
+- 상승·하락 하라미: 현재 몸통이 이전 반대색 몸통 내부에 있고 상대적으로 작은지 확인
+- 관통형 / 먹구름형: 반대 방향 두 캔들의 몸통 중간값을 종가로 회복·이탈하는 조건
+- 집게형 저점 / 집게형 고점: 연속 두 캔들의 저점·고점 차이가 ATR/최소 틱 허용 오차 이내인지 확인
+- 인사이드 바 / 아웃사이드 바: 이전 캔들의 고가·저가 범위를 완전히 포함하거나 바깥으로 확장하는지 확인
+- 장대양봉 / 장대음봉: ATR 기준 몸통 최소 크기와 전체 범위 대비 몸통 비중을 사용
+- 확장 패턴 켜기/끄기, 도지 몸통 비율, 하라미 몸통 비율, 집게형 허용 오차, 장대 몸통 크기 설정 제공
+- 기존 캔들 목표 영역·신호 캔들 극값 무효화·박스 개수 제한과 연계; 한 봉에서 여러 형태가 겹치면 우선순위가 높은 대표 라벨 하나를 표시
+- v1.1부터 요청에 따라 alertcondition() 및 alert() 호출이 없으며 v1.2도 알림 코드를 포함하지 않음
 
 ## 표시 규칙
 - 형성 중 패턴: 주황색 계열 구조 박스
@@ -95,9 +112,9 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 
 ## 설치
 1. TradingView 차트를 열고 하단의 Pine Editor를 엽니다.
-2. [v1.1 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_1.pine)을 열어 코드를 복사합니다.
+2. [v1.2 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_2.pine)을 열어 코드를 복사합니다.
 3. Pine Editor에 붙여넣고 Save를 누른 뒤 Add to chart를 선택합니다.
-4. v1.1에는 알림 호출이 없습니다. 요청에 따라 패턴 모듈을 먼저 확장하고, 알림은 패턴 구성이 완료된 뒤 별도 단계에서 추가할 예정입니다.
+4. v1.2에는 알림 호출이 없습니다. 모든 패턴 모듈 확장이 끝난 뒤 별도 단계에서 알림을 추가할 예정입니다.
 
 ## 주요 설정
 - **탐지 설정**: 피벗 왼쪽·오른쪽 확인 봉 수, ATR 기간, 고점·저점 허용 오차
@@ -111,8 +128,8 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - **표시 설정**: 목표 영역 폭, 오른쪽 투영 길이, 목표 박스 최대 개수
 
 ## 중요한 한계 및 검증 상태
-- 사용자는 v0.9까지 정상 작동을 확인했습니다. v1.0 컨플루언스와 v1.1 하모닉 확장 로직은 TradingView Pine Editor에서 실제 컴파일 및 차트 확인이 필요합니다. 이 환경에서는 TradingView의 실제 컴파일러를 실행할 수 없습니다.
-- v1.1 소스에서는 모든 alertcondition() 및 alert() 호출을 제거했습니다. 현재 알림 등록 기능은 없으며, 패턴 추가 작업 이후 별도로 구현할 계획입니다.
+- 사용자는 v1.1까지 정상 작동을 확인했습니다. v1.2의 새 캔들 판별 로직은 TradingView Pine Editor에서 실제 컴파일 및 차트 검증이 필요합니다. 이 환경에서는 TradingView의 실제 컴파일러를 실행할 수 없습니다.
+- 최신 v1.2 소스에는 alertcondition() 및 alert() 호출이 없습니다. 알림 기능은 모든 패턴 모듈을 확장한 이후 별도 단계에서 다시 설계할 예정입니다.
 - 하모닉 패턴의 피보나치 조건은 허용 오차를 가진 근사 판별이며, D점 PRZ는 실제 D 피벗 주변의 ATR 기반 표시 영역입니다. 이는 미래 반전을 보장하지 않습니다.
 - BOS/CHOCH의 추세 방향은 스크립트 내부에서 추적하는 단순 편향 상태를 이용합니다. 다양한 ICT/SMC 정의를 완전히 대표하는 것은 아닙니다.
 - 오더 블록은 BOS/CHOCH 직전 탐색 범위 내 최근 반대 방향 캔들의 전체 고가~저가로 근사합니다. 바디만 쓰는 방식, 거래량·상위 시간대 필터, 다중 오더 블록 선택 등 고급 규칙은 아직 포함되지 않았습니다.
@@ -131,5 +148,6 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - [v0.9 — 캔들 패턴 확장: 모닝스타·이브닝스타·해머·슈팅스타·적삼병·흑삼병](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_9.pine)
 - [v1.0 — 오더 블록·FVG 컨플루언스](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_0.pine)
 - [v1.1 — 사이퍼·샤크·AB=CD 변형 및 알림 코드 제거](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_1.pine)
+- [v1.2 — 추가 캔들 패턴 11종 및 알림 코드 없음](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v1_2.pine)
 
 개발 계획은 [패턴 모듈 확장 로드맵](docs/PATTERN_MODULE_ROADMAP.md)을 참조하세요.
