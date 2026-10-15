@@ -1486,7 +1486,7 @@ if enableCandles and barstate.isconfirmed and not na(atr) and atr > 0 and bar_in
             array.shift(candleNames)
 
 // Track traditional price gaps between consecutive, non-overlapping candles.
- // Unlike three-candle FVG, these gaps use the previous bar's high/low as the zone edge.
+// Unlike three-candle FVG, these gaps use the previous bar's high/low as the zone edge.
  // A newly detected gap is not assessed for fill until the following bar.
 if array.size(priceGapBoxes) > 0
     for i = 0 to array.size(priceGapBoxes) - 1
