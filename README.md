@@ -11,12 +11,6 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 
 ## 구현 패턴
 
-### v0.9 확장 캔들 패턴
-- 모닝스타 / 이브닝스타
-- 해머 / 슈팅스타
-- 적삼병 / 흑삼병
-
-
 ### 반전 구조
 - 이중천장 / 이중바닥
 - 헤드앤숄더 / 역헤드앤숄더
@@ -64,7 +58,15 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 - **크랩(Crab)**
 - 다섯 개의 확정 피벗 X-A-B-C-D에서 피보나치 비율 조합을 검사
 - D점 주변을 ATR 기반 잠재 반전 영역(PRZ) 박스로 표시하고 감지 알림 제공
-- 비율 허용 오차, AB=CD 길이 오차, PRZ 폭 및 표시 박스 수 설정 제공
+- 비율 허용 오차, AB=CD 길이 오차, PRZ 폭 및 표시 박스 수 설정 제공 
+
+### v0.9 확장 캔들 패턴
+- 모닝스타 / 이브닝스타: 3개 캔들 조합과 첫 캔들 몸통 중간값 회복·이탈 조건
+- 해머 / 슈팅스타: 긴 꼬리·몸통 위치와 간단한 직전 하락·상승 흐름 조건
+- 적삼병 / 흑삼병: 3개 연속 방향성 캔들, 단계적인 종가 진행, 이전 몸통 내부 시가 조건
+- 기존 ATR 목표 영역·신호 캔들 고가/저가 무효화 관리 및 박스 수 제한을 공유
+- 패턴별 알림과 확장 캔들 패턴 on/off 설정 제공
+- 탐지 조건은 차트에서 식별하기 위한 근사 규칙이며, 모든 교과서적 변형을 포괄하지 않음
 
 ## 표시 규칙
 - 형성 중 패턴: 주황색 계열 구조 박스
@@ -76,7 +78,7 @@ TradingView Pine Script v6 기반 차트 분석 지표입니다. 여러 기술�
 
 ## 설치
 1. TradingView 차트를 열고 하단의 Pine Editor를 엽니다.
-2. [v0.8 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_8.pine)을 열어 코드를 복사합니다.
+2. [v0.9 소스 파일](https://github.com/viphj8501-tech/universal-pattern-zones/blob/main/universal_pattern_zones_v0_9.pine)을 열어 코드를 복사합니다.
 3. Pine Editor에 붙여넣고 Save를 누른 뒤 Add to chart를 선택합니다.
 4. 알림을 쓰려면 Create Alert에서 필요한 한글 조건을 선택합니다.
 
